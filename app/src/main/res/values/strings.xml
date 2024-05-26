@@ -1,13 +1,18 @@
 <resources>
     <string name="app_name">ProductivityGame</string>
     <string name="task_name">Task Name</string>
-    <string name="add_note_placeholder">Consider writing down why you want to complete this task, something to motivate yourself to do it or any important things to remember</string>
+    <string name="add_note_placeholder">Consider writing why you want to do this, something motivational or anything else you want!</string>
     <string name="add_note_label">Notes</string>
     <string name="notifications_toggle">Notifications Enabled</string>
     <string name="calendar_icon_desc">Calendar Date Selector</string>
     <string name="date_select">Date</string>
+    <string name="start_date_select">Start Date</string>
     <string name="select_date">Select Date</string>
     <string name="time_select">Time (optional)</string>
     <string name="time_picker_button">Clock Time Selector</string>
     <string name="time_format">hh:mm a</string>
+    <string name="daily_type">Daily</string>
+    <string name="custom_type">Custom</string>
+    <string name="monthly_type">Monthly</string>
+    <string name="weekly_type">Weekly</string>
 </resources>
