@@ -12,20 +12,22 @@ class TaskDefaultSelectableDates(private val todayDateUtcMillis: Long): Selectab
     override fun isSelectableDate(utcTimeMillis: Long): Boolean =
         utcTimeMillis >= todayDateUtcMillis
 
-
     override fun isSelectableYear(year: Int): Boolean =
         year >= getCurrentDate().year
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-class TaskWeeklySelectableDates(
+class TaskSelectableDates(
     private val todayDateUtcMillis: Long,
+    private val isTypeWeekly: Boolean,
     private val daysOfWeek: Set<DayOfWeek>
 ): SelectableDates {
     override fun isSelectableDate(utcTimeMillis: Long): Boolean =
         (utcTimeMillis >= todayDateUtcMillis) and
-        (Instant.fromEpochMilliseconds(utcTimeMillis).toLocalDateTime(TimeZone.UTC).dayOfWeek in daysOfWeek)
-
+            if(isTypeWeekly) {
+                (Instant.fromEpochMilliseconds(utcTimeMillis).toLocalDateTime(TimeZone.UTC)
+                    .dayOfWeek in daysOfWeek)
+            } else true
 
     override fun isSelectableYear(year: Int): Boolean =
         year >= getCurrentDate().year

@@ -1,5 +1,8 @@
 package com.example.productivitygame.ui
 
+import androidx.compose.material3.CalendarLocale
+import androidx.compose.material3.DatePickerState
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -10,6 +13,7 @@ import com.example.productivitygame.data.RecurringType
 import com.example.productivitygame.data.Task
 import com.example.productivitygame.data.TaskDifficulty
 import com.example.productivitygame.data.TaskReward
+import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -21,6 +25,8 @@ import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.todayIn
+import java.util.Locale
 
 class AddTaskViewModel(
     private val recurringCatAndTaskDao: RecurringCatAndTaskDao
@@ -28,9 +34,28 @@ class AddTaskViewModel(
     var taskUiState by mutableStateOf(TaskUiState())
         private set
 
+    @OptIn(ExperimentalMaterial3Api::class)
+    var datePickerState by mutableStateOf(DatePickerState(
+        yearRange = 2024..2025,
+        locale = Locale.getDefault(),
+        initialSelectedDateMillis = getCurrentDate().toEpochMillis(TimeZone.UTC),
+        selectableDates = getCurrentSelectableDates()
+    ))
+        private set
+    fun getCurrentSelectableDates() = TaskSelectableDates(
+        todayDateUtcMillis = getCurrentDate().toEpochMillis(TimeZone.UTC),
+        isTypeWeekly = taskUiState.taskDetails.recurringType?.let { it::class } == RecurringType.Weekly::class,
+        daysOfWeek = taskUiState.taskDetails.selectedDays
+    )
+
     fun updateUiState(taskDetails: TaskDetails) {
         taskUiState =
             TaskUiState(taskDetails = taskDetails, isEntryValid = false)
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    fun updateDatePickerState(newDatePickerState: DatePickerState) {
+        datePickerState = newDatePickerState
     }
 
     // validates input before allowing saving to database
@@ -128,12 +153,10 @@ fun Task.toDetails(): TaskDetails {
         notificationsEnabled = notificationsEnabled,
         // fix the null check in future
         date = localDatetime.date,
-        //TODO: convert datetime to date and time
         time = if (hasTime) localDatetime.time else null,
         durationInMillis = durationInMillis,
     )
 
-    //TODO: get recurring type and fix
     if (taskDetails.recurringType != null)
         taskDetails.recurringType.interval =  DateTimeUnit.DAY
     return taskDetails

@@ -1,4 +1,4 @@
-package com.example.productivitygame.ui
+package com.example.productivitygame.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement

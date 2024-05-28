@@ -1,4 +1,4 @@
-package com.example.productivitygame.ui
+package com.example.productivitygame.ui.components
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues

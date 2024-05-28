@@ -15,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -25,7 +26,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,14 +42,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.productivitygame.R
 import com.example.productivitygame.data.RecurringType
-import com.example.productivitygame.ui.theme.ProductivityGameTheme
+import com.example.productivitygame.ui.components.BetterTextField
+import com.example.productivitygame.ui.components.TimePickerDialog
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -58,9 +57,10 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
 import kotlinx.datetime.format.MonthNames
 import kotlinx.datetime.format.char
-import kotlinx.datetime.todayIn
+import java.util.Locale
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTaskScreen(
     navigateBack: () -> Unit,
@@ -71,6 +71,7 @@ fun AddTaskScreen(
     val coroutineScope = rememberCoroutineScope()
     AddTaskForm(
         taskDetails = viewModel.taskUiState.taskDetails,
+        datePickerState = viewModel.datePickerState,
         onValueChange = viewModel::updateUiState,
         onSavePressed = {
             coroutineScope.launch {
@@ -78,15 +79,21 @@ fun AddTaskScreen(
                 navigateBack()
             }
         },
+        onOpenDatePickerDialog = { viewModel.updateDatePickerState(it) },
+        updateSelectableDates = { viewModel.getCurrentSelectableDates() },
         modifier = modifier
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTaskForm(
     taskDetails: TaskDetails,
+    datePickerState: DatePickerState,
     onValueChange: (TaskDetails) -> Unit,
     onSavePressed: () -> Unit,
+    onOpenDatePickerDialog: (DatePickerState) -> Unit,
+    updateSelectableDates: () -> TaskSelectableDates,
     modifier: Modifier = Modifier
 ) {
     var recurringSelectorEnabled by rememberSaveable {
@@ -127,6 +134,7 @@ fun AddTaskForm(
             selectorEnabled = recurringSelectorEnabled,
             onCheckedChange = {
                 recurringSelectorEnabled = it
+                if (!it) onValueChange(taskDetails.copy(recurringType = null))
             },
             onTypeChange = { onValueChange(taskDetails.copy(recurringType = it)) },
             selectedDays = taskDetails.selectedDays,
@@ -139,14 +147,16 @@ fun AddTaskForm(
                 }
             }
         )
-
         // Date Picker (optional)
         DateSelector(
             savedDate = taskDetails.date,
             onConfirmDate = {
                 if (it != null) onValueChange(taskDetails.copy(date = it.toUtcDate()))
             },
-            isRecurring = recurringSelectorEnabled
+            taskDetails = taskDetails,
+            datePickerState = datePickerState,
+            onOpenDatePickerDialog = onOpenDatePickerDialog,
+            updateSelectableDates = updateSelectableDates
         )
         TimeSelector(
             savedTime = taskDetails.time,
@@ -177,7 +187,6 @@ fun RecurringToggle(
     onSelectDay: (DayOfWeek) -> Unit,
     onCheckedChange: (Boolean) -> Unit,
     onTypeChange: (RecurringType) -> Unit,
-    modifier: Modifier = Modifier,
     selectorEnabled: Boolean = false
     ) {
     ToggleWithTextRow(
@@ -207,7 +216,7 @@ fun RecurringTypeSelector(
     }
     val selectedButtonColor = ButtonDefaults.outlinedButtonColors(containerColor = Color.Green)
     val defaultButtonColor = ButtonDefaults.outlinedButtonColors()
-    val recurringTypeSelectedClass = recurringTypeSelected?.let { it::class }
+    val recurringTypeClass = recurringTypeSelected?.let { it::class }
 
     Column {
         Row(
@@ -218,7 +227,7 @@ fun RecurringTypeSelector(
             OutlinedButton(
                 onClick = { onTypeChange(RecurringType.Daily()) },
                 colors =
-                if (recurringTypeSelectedClass == RecurringType.Daily::class)
+                if (recurringTypeClass == RecurringType.Daily::class)
                     selectedButtonColor else defaultButtonColor
             ) {
                 Text(text = stringResource(R.string.daily_type))
@@ -226,7 +235,7 @@ fun RecurringTypeSelector(
             OutlinedButton(
                 onClick = { onTypeChange(RecurringType.Weekly()) },
                 colors =
-                if (recurringTypeSelectedClass == RecurringType.Weekly::class) selectedButtonColor
+                if (recurringTypeClass == RecurringType.Weekly::class) selectedButtonColor
                 else defaultButtonColor
             ) {
                 Text(text = stringResource(R.string.weekly_type))
@@ -237,7 +246,7 @@ fun RecurringTypeSelector(
                     onTypeChange(RecurringType.Monthly().apply {interval = DateTimeUnit.MONTH})
                 },
                 colors =
-                if (recurringTypeSelectedClass == RecurringType.Monthly::class) selectedButtonColor
+                if (recurringTypeClass == RecurringType.Monthly::class) selectedButtonColor
                 else defaultButtonColor
             ) {
                 Text(text = stringResource(R.string.monthly_type))
@@ -246,13 +255,13 @@ fun RecurringTypeSelector(
             OutlinedButton(
                 onClick = { onTypeChange(RecurringType.Custom()) },
                 colors =
-                if (recurringTypeSelectedClass == RecurringType.Custom::class) selectedButtonColor
+                if (recurringTypeClass == RecurringType.Custom::class) selectedButtonColor
                 else defaultButtonColor
             ) {
                 BetterTextField(
                     placeholder = { Text(text = "Custom") },
                     value = customTypeText,
-                    enabled = recurringTypeSelectedClass == RecurringType.Custom::class,
+                    enabled = recurringTypeClass == RecurringType.Custom::class,
                     onValueChange = {
                         customTypeText = it
                         val customInterval = customTypeText.toIntOrNull()
@@ -266,7 +275,7 @@ fun RecurringTypeSelector(
 
 
         }
-        if (recurringTypeSelectedClass == RecurringType.Weekly::class) {
+        if (recurringTypeClass == RecurringType.Weekly::class) {
             DayOfWeekSelector(
                 selectedDays = selectedDays,
                 onSelectDay = onSelectDay
@@ -281,7 +290,6 @@ fun ToggleWithTextRow(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
@@ -309,7 +317,7 @@ fun DayOfWeekSelector(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         for (dayOfWeek in DayOfWeek.entries) {
             OutlinedButton(
@@ -331,21 +339,18 @@ fun DayOfWeekSelector(
 fun DateSelector(
     savedDate: LocalDate?,
     onConfirmDate: (Long?) -> Unit,
+    taskDetails: TaskDetails,
+    datePickerState: DatePickerState,
+    onOpenDatePickerDialog: (DatePickerState) -> Unit,
+    updateSelectableDates: () -> TaskSelectableDates,
     modifier: Modifier = Modifier,
     initialUTCDateMillis: Long =
-        Clock.System.todayIn(TimeZone.currentSystemDefault()).toEpochMillis(TimeZone.UTC),
-    isRecurring: Boolean = false,
+        getCurrentDate().toEpochMillis(TimeZone.UTC),
 ) {
     val customDateFormat = LocalDate.Format {
         monthName(MonthNames.ENGLISH_ABBREVIATED); char(' '); dayOfMonth()
     }
-    val datePickerState = rememberDatePickerState(
-        yearRange = 2024..2025,
-        initialSelectedDateMillis = initialUTCDateMillis,
-        selectableDates = TaskDefaultSelectableDates(initialUTCDateMillis)
-    )
     var showDatePicker by remember { mutableStateOf(false) }
-
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
@@ -354,7 +359,7 @@ fun DateSelector(
             .padding(dimensionResource(R.dimen.padding_medium))
     ) {
         Text(
-            text = if (isRecurring) stringResource(id = R.string.start_date_select)
+            text = if (taskDetails.recurringType != null) stringResource(id = R.string.start_date_select)
             else stringResource(R.string.date_select),
             style = MaterialTheme.typography.titleLarge
         )
@@ -366,7 +371,22 @@ fun DateSelector(
                     getCurrentDate().format(customDateFormat),
                 style = MaterialTheme.typography.titleLarge
             )
-            IconButton(onClick = { showDatePicker = true }) {
+            IconButton(
+                onClick = {
+                    onOpenDatePickerDialog(
+                        with(datePickerState){
+                            DatePickerState(
+                                locale = Locale.getDefault(),
+                                initialSelectedDateMillis = initialUTCDateMillis,
+                                yearRange = yearRange,
+                                initialDisplayMode = displayMode,
+                                selectableDates = updateSelectableDates()
+                            )
+                        }
+                    )
+                    showDatePicker = true
+                }
+            ) {
                 Icon(
                     painter = painterResource(id = R.drawable.calendar_icon),
                     contentDescription = stringResource(R.string.calendar_icon_desc),
@@ -377,7 +397,7 @@ fun DateSelector(
     }
 
     // Lambda function for dismissing the Date Picker dialog
-    val dismissDatePicker = {
+    fun dismissDatePicker() {
         showDatePicker = false
         datePickerState.selectedDateMillis =
             savedDate?.toEpochMillis(TimeZone.UTC) ?: initialUTCDateMillis
@@ -385,7 +405,7 @@ fun DateSelector(
 
     if (showDatePicker) {
         DatePickerDialog(
-            onDismissRequest = dismissDatePicker,
+            onDismissRequest = ::dismissDatePicker,
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -396,7 +416,7 @@ fun DateSelector(
             },
             dismissButton = {
                 TextButton(
-                    onClick = dismissDatePicker
+                    onClick = ::dismissDatePicker
                 ) { Text("Cancel") }
             },
             modifier = Modifier.fillMaxSize()
@@ -472,7 +492,9 @@ fun TimeSelector(
         }
     }
 }
-        
+
+/*
+@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun AddTaskFormPreview() {
@@ -483,7 +505,8 @@ fun AddTaskFormPreview() {
             onValueChange = {
                 uiState = TaskUiState(taskDetails = it)
             },
-            onSavePressed = {})
+            onSavePressed = {},
+            )
     }
 }
-
+*/
