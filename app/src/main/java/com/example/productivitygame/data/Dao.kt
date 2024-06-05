@@ -3,13 +3,17 @@ package com.example.productivitygame.data
 import android.util.Log
 import androidx.room.Dao
 import androidx.room.Delete
+import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Relation
 import androidx.room.Transaction
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.Instant
 
 @Dao
 interface RecurringCatAndTaskDao {
@@ -48,4 +52,29 @@ interface RecurringCatAndTaskDao {
         }
         Log.d("DONE", "Insertion of recurring task completed")
     }
+    @Transaction
+    @Query("SELECT * FROM TaskList WHERE " +
+            "datetimeInstant >= :instantStart AND " +
+            "datetimeInstant < :instantEnd AND " +
+            "hasTime = :hasTime ORDER BY datetimeInstant")
+    fun getTasksFromInstantRange(
+        instantStart: Instant,
+        instantEnd: Instant,
+        hasTime: Boolean
+    ): Flow<List<TaskAndRecurringCat>>
+    //to query specific dates just need to provide day start instant and day end instant
+    @Transaction
+    @Query("SELECT * FROM TaskList WHERE id = :taskId")
+    fun getTaskWithId(taskId: Int): Flow<TaskAndRecurringCat>
 }
+
+data class TaskAndRecurringCat(
+    @Embedded
+    val task: Task,
+    @Relation(
+        parentColumn = "recurringCatId",
+        entityColumn = "id"
+    )
+    val recurringCategory: RecurringCategory
+)
+

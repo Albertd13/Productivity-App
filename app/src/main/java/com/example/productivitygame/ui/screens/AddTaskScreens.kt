@@ -1,4 +1,4 @@
-package com.example.productivitygame.ui
+package com.example.productivitygame.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,8 +46,17 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.productivitygame.R
 import com.example.productivitygame.data.RecurringType
+import com.example.productivitygame.navigation.NavigationDestination
+import com.example.productivitygame.ui.viewmodels.AddTaskViewModel
+import com.example.productivitygame.ui.AppViewModelProvider
+import com.example.productivitygame.ui.viewmodels.EditTaskViewModel
+import com.example.productivitygame.ui.viewmodels.TaskDetails
+import com.example.productivitygame.ui.TaskSelectableDates
 import com.example.productivitygame.ui.components.BetterTextField
 import com.example.productivitygame.ui.components.TimePickerDialog
+import com.example.productivitygame.ui.utils.getCurrentDate
+import com.example.productivitygame.ui.utils.toEpochMillis
+import com.example.productivitygame.ui.utils.toUtcDate
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
@@ -59,7 +68,10 @@ import kotlinx.datetime.format.MonthNames
 import kotlinx.datetime.format.char
 import java.util.Locale
 
-
+object AddTaskDestination : NavigationDestination {
+    override val route = "add_task"
+    override val titleRes = R.string.app_name
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTaskScreen(
@@ -69,7 +81,38 @@ fun AddTaskScreen(
     viewModel: AddTaskViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val coroutineScope = rememberCoroutineScope()
-    AddTaskForm(
+    SaveTaskForm(
+        taskDetails = viewModel.taskUiState.taskDetails,
+        datePickerState = viewModel.datePickerState,
+        onValueChange = viewModel::updateUiState,
+        onSavePressed = {
+            coroutineScope.launch {
+                viewModel.saveItem()
+                navigateBack()
+            }
+        },
+        onOpenDatePickerDialog = { viewModel.updateDatePickerState(it) },
+        updateSelectableDates = { viewModel.getCurrentSelectableDates() },
+        modifier = modifier
+    )
+}
+
+object EditTaskDestination : NavigationDestination {
+    override val route = "edit_task"
+    override val titleRes = R.string.app_name
+    const val taskIdArg = "taskId"
+    val routeWithArgs = "$route/{$taskIdArg}"
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditTaskScreen(
+    navigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    productive: Boolean = true,
+    viewModel: EditTaskViewModel = viewModel(factory = AppViewModelProvider.Factory)
+) {
+    val coroutineScope = rememberCoroutineScope()
+    SaveTaskForm(
         taskDetails = viewModel.taskUiState.taskDetails,
         datePickerState = viewModel.datePickerState,
         onValueChange = viewModel::updateUiState,
@@ -87,7 +130,7 @@ fun AddTaskScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddTaskForm(
+fun SaveTaskForm(
     taskDetails: TaskDetails,
     datePickerState: DatePickerState,
     onValueChange: (TaskDetails) -> Unit,
@@ -152,6 +195,7 @@ fun AddTaskForm(
             savedDate = taskDetails.date,
             onConfirmDate = {
                 if (it != null) onValueChange(taskDetails.copy(date = it.toUtcDate()))
+                if (it != null) onValueChange(taskDetails.copy(date = it.toUtcDate()))
             },
             taskDetails = taskDetails,
             datePickerState = datePickerState,
@@ -174,7 +218,7 @@ fun AddTaskForm(
             Button(
                 onClick = { onSavePressed() },
             ) {
-                Text(text = "Add Task")
+                Text(text = stringResource(R.string.save_task))
             }
         }
     }
@@ -218,10 +262,11 @@ fun RecurringTypeSelector(
     val defaultButtonColor = ButtonDefaults.outlinedButtonColors()
     val recurringTypeClass = recurringTypeSelected?.let { it::class }
 
-    Column {
+    Column(modifier = modifier) {
         Row(
-            modifier = modifier,
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Absolute.SpaceBetween,
         ) {
 
             OutlinedButton(

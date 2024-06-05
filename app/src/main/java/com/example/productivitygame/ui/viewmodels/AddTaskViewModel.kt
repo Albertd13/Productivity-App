@@ -1,19 +1,20 @@
-package com.example.productivitygame.ui
+package com.example.productivitygame.ui.viewmodels
 
-import androidx.compose.material3.CalendarLocale
 import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import com.example.productivitygame.data.RecurringCategory
 import com.example.productivitygame.data.RecurringCatAndTaskDao
+import com.example.productivitygame.data.RecurringCategory
 import com.example.productivitygame.data.RecurringType
 import com.example.productivitygame.data.Task
 import com.example.productivitygame.data.TaskDifficulty
 import com.example.productivitygame.data.TaskReward
-import kotlinx.datetime.Clock
+import com.example.productivitygame.ui.TaskSelectableDates
+import com.example.productivitygame.ui.utils.getCurrentDate
+import com.example.productivitygame.ui.utils.toEpochMillis
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -24,9 +25,8 @@ import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
-import kotlinx.datetime.toLocalDateTime
-import kotlinx.datetime.todayIn
 import java.util.Locale
+
 
 class AddTaskViewModel(
     private val recurringCatAndTaskDao: RecurringCatAndTaskDao
@@ -142,22 +142,3 @@ fun TaskDetails.getRecurringCat(): RecurringCategory =
         interval = recurringType?.interval ?: DateTimeUnit.DAY,
         daysOfWeek = selectedDays.ifEmpty { null }
      )
-
-fun Task.toDetails(): TaskDetails {
-    val localDatetime = datetimeInstant.toLocalDateTime(TimeZone.currentSystemDefault())
-    val taskDetails = TaskDetails(
-        taskId = id,
-        name = name,
-        notes = notes,
-        productive = productive,
-        notificationsEnabled = notificationsEnabled,
-        // fix the null check in future
-        date = localDatetime.date,
-        time = if (hasTime) localDatetime.time else null,
-        durationInMillis = durationInMillis,
-    )
-
-    if (taskDetails.recurringType != null)
-        taskDetails.recurringType.interval =  DateTimeUnit.DAY
-    return taskDetails
-}

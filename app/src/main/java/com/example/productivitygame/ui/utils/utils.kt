@@ -1,4 +1,4 @@
-package com.example.productivitygame.ui
+package com.example.productivitygame.ui.utils
 
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate

@@ -79,7 +79,7 @@ class Converters {
 
 }
 
-@Database(entities = [Task::class, RecurringCategory::class], version = 8, exportSchema = false)
+@Database(entities = [Task::class, RecurringCategory::class], version = 9, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class TaskDatabase: RoomDatabase() {
     abstract fun recurringTaskDao(): RecurringCatAndTaskDao

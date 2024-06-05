@@ -5,15 +5,21 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.productivitygame.ProductivityGameApplication
+import com.example.productivitygame.ui.viewmodels.AddTaskViewModel
+import com.example.productivitygame.ui.viewmodels.ScheduleViewModel
 
 
 object AppViewModelProvider {
     val Factory = viewModelFactory {
         // Initializer for ItemEditViewModel
         initializer {
-            val app = application()
             AddTaskViewModel(
-                recurringCatAndTaskDao = app.container.recurringCatAndTaskDao
+                recurringCatAndTaskDao = application().container.recurringCatAndTaskDao
+            )
+        }
+        initializer {
+            ScheduleViewModel(
+                recurringCatAndTaskDao = application().container.recurringCatAndTaskDao
             )
         }
     }

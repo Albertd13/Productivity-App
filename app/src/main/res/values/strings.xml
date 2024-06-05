@@ -15,4 +15,11 @@
     <string name="custom_type">Custom</string>
     <string name="monthly_type">Monthly</string>
     <string name="weekly_type">Weekly</string>
+    <string name="notifications_enabled">Notifications Enabled</string>
+    <string name="notifications_disabled">Notifications Disabled</string>
+    <string name="add_task">Add Task</string>
+    <string name="save_task">Save Task</string>
+    <string name="home_nav_label">Home</string>
+    <string name="schedule_nav_label">Home</string>
+    <string name="timer_nav_label">Home</string>
 </resources>
