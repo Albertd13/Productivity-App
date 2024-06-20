@@ -13,6 +13,9 @@ import com.example.productivitygame.ui.screens.EditTaskDestination
 import com.example.productivitygame.ui.screens.EditTaskScreen
 import com.example.productivitygame.ui.screens.ScheduleDestination
 import com.example.productivitygame.ui.screens.ViewScheduleScreen
+import com.example.productivitygame.ui.utils.toEpochMillis
+import com.example.productivitygame.ui.utils.toUtcDate
+import kotlinx.datetime.TimeZone
 
 @Composable
 fun InventoryNavHost(
@@ -26,19 +29,36 @@ fun InventoryNavHost(
     ) {
         composable(route = ScheduleDestination.route) {
             ViewScheduleScreen(
-                navigateToNewTask = { navController.navigate(AddTaskDestination.route) },
+                navigateToNewTask = { navController.navigate(
+                    AddTaskDestination.route +
+                            "?${AddTaskDestination.selectedDateInUTCMillisArg}=" +
+                            "${it.toEpochMillis(TimeZone.UTC)}"
+                ) },
                 navigateToEditTask = {
-                    navController.navigate("")
+                    navController.navigate("${EditTaskDestination.route}/$it")
                 }
             )
         }
-        composable(route = AddTaskDestination.route) {
-            AddTaskScreen(navigateBack = { navController.popBackStack() })
+        composable(
+            route = AddTaskDestination.routeWithArgs,
+            arguments = listOf(
+                navArgument(AddTaskDestination.selectedDateInUTCMillisArg) {
+                    type = NavType.LongType
+                }
+            )
+        ) {
+            AddTaskScreen(
+                preSelectedDate =
+                    it.arguments?.getLong(AddTaskDestination.selectedDateInUTCMillisArg)?.toUtcDate(),
+                navigateBack = { navController.popBackStack() }
+            )
         }
-        composable(route = EditTaskDestination.routeWithArgs,
-            arguments = listOf(navArgument(EditTaskDestination.taskIdArg) {
-                type = NavType.IntType
-            })
+        composable(
+            route = EditTaskDestination.routeWithArgs,
+            arguments = listOf(
+                navArgument(EditTaskDestination.taskIdArg) {
+                    type = NavType.IntType
+                })
         ) {
             EditTaskScreen(navigateBack = { navController.popBackStack() })
         }

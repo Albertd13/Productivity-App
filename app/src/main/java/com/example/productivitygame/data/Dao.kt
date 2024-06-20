@@ -11,6 +11,7 @@ import androidx.room.Relation
 import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.Instant
@@ -20,14 +21,9 @@ interface RecurringCatAndTaskDao {
     // returns rowId of inserted item
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(item: Task)
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(item: RecurringCategory): Long
 
-    suspend fun getIdOfCat(recurringCategory: RecurringCategory): Int? =
-        getIdOf(recurringCategory.type, recurringCategory.interval, recurringCategory.daysOfWeek)
-
-    @Query("SELECT id FROM RecurringCats WHERE type = :type AND interval = :interval AND daysOfWeek = :daysOfWeek")
-    suspend fun getIdOf(type: RecurringType?, interval: DateTimeUnit, daysOfWeek: Set<DayOfWeek>?): Int?
     @Update
     suspend fun update(item: Task)
     @Update
@@ -38,19 +34,31 @@ interface RecurringCatAndTaskDao {
     @Delete
     suspend fun delete(item: RecurringCategory)
 
+    // if it doesnt exist in database insert and return id
+    fun getIdOfRecurringCat(recurringCategory: RecurringCategory): Int =
+        getIdOf(recurringCategory.interval, recurringCategory.type, recurringCategory.daysOfWeek) ?:
+        getIdFromRowId(runBlocking { insert(recurringCategory.copy(id = 0)) })
+    @Query("SELECT id FROM RecurringCats WHERE type = :recurringType AND interval = :interval AND daysOfWeek = :daysOfWeek LIMIT 1")
+    fun getIdOf(interval: DateTimeUnit, recurringType: RecurringType?, daysOfWeek: Set<DayOfWeek>?): Int?
+
     // Get the id value given an internal row id
-    @Query("SELECT id FROM RecurringCats WHERE rowid = :rowId")
-    suspend fun getIdFromRowId(rowId: Long): Int
+    @Query("SELECT id FROM RecurringCats WHERE rowid = :rowId LIMIT 1")
+    fun getIdFromRowId(rowId: Long): Int
+
+    @Query("DELETE FROM TaskList WHERE " +
+            "recurringCatId = :recurringCatId AND name = :taskName")
+    suspend fun deleteRecurringTasksWithName(recurringCatId: Int, taskName: String): Int
+
     @Transaction
     suspend fun insertRecurringTasks(
         recurringCategory: RecurringCategory,
         insertedTasks: List<Task>
     ) {
-        val recurringCatId = getIdOfCat(recurringCategory) ?: getIdFromRowId(insert(recurringCategory))
+        val recurringCatId = getIdOfRecurringCat(recurringCategory)
         insertedTasks.forEach {
             insert(it.copy(recurringCatId = recurringCatId))
         }
-        Log.d("DONE", "Insertion of recurring task completed")
+        Log.d("INSERT", "Inserted Recurring Tasks")
     }
     @Transaction
     @Query("SELECT * FROM TaskList WHERE " +
@@ -65,7 +73,8 @@ interface RecurringCatAndTaskDao {
     //to query specific dates just need to provide day start instant and day end instant
     @Transaction
     @Query("SELECT * FROM TaskList WHERE id = :taskId")
-    fun getTaskWithId(taskId: Int): Flow<TaskAndRecurringCat>
+    suspend fun getTaskWithId(taskId: Int): TaskAndRecurringCat
+
 }
 
 data class TaskAndRecurringCat(

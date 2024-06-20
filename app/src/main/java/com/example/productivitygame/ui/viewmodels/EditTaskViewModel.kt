@@ -1,5 +1,6 @@
 package com.example.productivitygame.ui.viewmodels
 
+import android.util.Log
 import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.getValue
@@ -14,10 +15,10 @@ import com.example.productivitygame.ui.TaskSelectableDates
 import com.example.productivitygame.ui.screens.EditTaskDestination
 import com.example.productivitygame.ui.utils.getCurrentDate
 import com.example.productivitygame.ui.utils.toEpochMillis
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.plus
@@ -30,13 +31,16 @@ class EditTaskViewModel(
     private val taskId: Int = checkNotNull(savedStateHandle[EditTaskDestination.taskIdArg])
     var taskUiState by mutableStateOf(TaskUiState())
         private set
+    private var originalTaskName: String
+    private var originalSelectedDays: Set<DayOfWeek> = setOf()
     init {
         viewModelScope.launch {
-            taskUiState = recurringCatAndTaskDao.getTaskWithId(taskId)
-                .filterNotNull()
-                .first()
+            taskUiState = runBlocking { recurringCatAndTaskDao.getTaskWithId(taskId) }
                 .toTaskUiState(true)
         }
+        originalTaskName = taskUiState.taskDetails.name
+        originalSelectedDays = taskUiState.taskDetails.selectedDays
+        Log.d("ORIGINALNAME", originalTaskName)
     }
     @OptIn(ExperimentalMaterial3Api::class)
     var datePickerState by mutableStateOf(
@@ -55,7 +59,7 @@ class EditTaskViewModel(
 
     fun updateUiState(taskDetails: TaskDetails) {
         taskUiState =
-            TaskUiState(taskDetails = taskDetails, isEntryValid = false)
+            TaskUiState(taskDetails = taskDetails, isEntryValid = validateInput())
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -66,35 +70,53 @@ class EditTaskViewModel(
     // validates input before allowing saving to database
     private fun validateInput(taskDetails: TaskDetails = taskUiState.taskDetails): Boolean =
         with(taskDetails) {
-            name.isNotBlank() and
-                    (date != null) and
-                    (
-                            (recurringType?.let { it::class } != RecurringType.Weekly::class) or
-                                    (selectedDays.contains(date!!.dayOfWeek))
-                            )
+            name.isNotBlank() and (date != null) and
+            (
+                (recurringType?.let { it::class } != RecurringType.Weekly::class) or
+                (selectedDays.contains(date!!.dayOfWeek))
+            )
         }
 
-    //for Weekly Recurring types, save an activity for each selected day, with date modified to fit day
-    suspend fun saveItem() {
+    //for Weekly Recurring types, save a separate task for each selected day, with date modified to fit day
+    private suspend fun saveNewTasks() {
         if (validateInput()) {
             with(taskUiState.taskDetails){
-                val taskList = if (recurringType?.let { it::class } == RecurringType.Weekly::class){
-                    val startDayIsoNr = (date!!.dayOfWeek).isoDayNumber
-                    buildList {
-                        selectedDays.forEach {
-                            val daysToAdd = (it.isoDayNumber - startDayIsoNr) % 7
-                            val newDate = date.plus(daysToAdd, DateTimeUnit.DAY)
-                            add(taskUiState.taskDetails.copy(date = newDate).toTask())
+                val taskList =
+                    if (recurringType?.let { it::class } == RecurringType.Weekly::class) {
+                        val startDayIsoNr = (date!!.dayOfWeek).isoDayNumber
+                        buildList {
+                            selectedDays.forEach {
+                                val daysToAdd = (it.isoDayNumber - startDayIsoNr) % 7
+                                val newDate = date.plus(daysToAdd, DateTimeUnit.DAY)
+                                add(taskUiState.taskDetails
+                                        .copy(date = newDate, taskId = 0)
+                                        .toTask()
+                                )
+                            }
                         }
-                    }
-
-                } else listOf(toTask())
-
+                    } else listOf(toTask())
                 recurringCatAndTaskDao.insertRecurringTasks(
                     recurringCategory = getRecurringCat(),
                     insertedTasks = taskList
                 )
             }
+        } else {
+            Log.d("INVALID", "${taskUiState.taskDetails}")
+        }
+    }
+    suspend fun updateItem() {
+        if (taskUiState.taskDetails.selectedDays == originalSelectedDays) {
+            viewModelScope.launch {
+                recurringCatAndTaskDao.update(taskUiState.taskDetails.toTask())
+            }
+        } else {
+            viewModelScope.launch {
+                recurringCatAndTaskDao.deleteRecurringTasksWithName(
+                    recurringCatId = taskUiState.taskDetails.recurringCatId,
+                    taskName = originalTaskName
+                )
+            }
+            saveNewTasks()
         }
     }
 }

@@ -34,11 +34,15 @@ class AddTaskViewModel(
     var taskUiState by mutableStateOf(TaskUiState())
         private set
 
+    // DatePickerState stored in VM because selectableDates need to change upon changes
+    // in TaskUiState, however mutating selectableDates value for rememberDatePickerState arg
+    // does not trigger a recomposition, so datePickerState variable must be reassigned to
+    // new DatePickerState object each time to reflect changes in selectableDates
     @OptIn(ExperimentalMaterial3Api::class)
     var datePickerState by mutableStateOf(DatePickerState(
         yearRange = 2024..2025,
         locale = Locale.getDefault(),
-        initialSelectedDateMillis = getCurrentDate().toEpochMillis(TimeZone.UTC),
+        initialSelectedDateMillis = taskUiState.taskDetails.date?.toEpochMillis(TimeZone.UTC),
         selectableDates = getCurrentSelectableDates()
     ))
         private set
@@ -50,7 +54,7 @@ class AddTaskViewModel(
 
     fun updateUiState(taskDetails: TaskDetails) {
         taskUiState =
-            TaskUiState(taskDetails = taskDetails, isEntryValid = false)
+            TaskUiState(taskDetails = taskDetails, isEntryValid = validateInput())
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -62,12 +66,13 @@ class AddTaskViewModel(
     private fun validateInput(taskDetails: TaskDetails = taskUiState.taskDetails): Boolean =
         with(taskDetails) {
             name.isNotBlank() and
-            (date != null) and
-            (
-                (recurringType?.let { it::class } != RecurringType.Weekly::class) or
-                (selectedDays.contains(date!!.dayOfWeek))
-            )
+                    (date != null) and
+                    (
+                            (recurringType?.let { it::class } != RecurringType.Weekly::class) or
+                                    (selectedDays.contains(date!!.dayOfWeek))
+                            )
         }
+
 
     //for Weekly Recurring types, save an activity for each selected day, with date modified to fit day
     suspend fun saveItem() {

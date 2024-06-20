@@ -12,12 +12,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Card
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -28,19 +32,26 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -53,7 +64,10 @@ import com.example.productivitygame.R
 import com.example.productivitygame.data.RecurringType
 import com.example.productivitygame.navigation.NavigationDestination
 import com.example.productivitygame.ui.AppViewModelProvider
+import com.example.productivitygame.ui.components.ConfirmationAlert
 import com.example.productivitygame.ui.utils.getCurrentDate
+import com.example.productivitygame.ui.utils.toEpochMillis
+import com.example.productivitygame.ui.utils.toUtcDate
 import com.example.productivitygame.ui.viewmodels.ScheduleTaskState
 import com.example.productivitygame.ui.viewmodels.ScheduleViewModel
 import com.example.productivitygame.ui.viewmodels.TaskDetails
@@ -64,7 +78,10 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
+import kotlinx.datetime.format.MonthNames
+import kotlinx.datetime.format.char
 import kotlinx.datetime.plus
 import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toKotlinLocalDate
@@ -74,19 +91,39 @@ object ScheduleDestination : NavigationDestination {
     override val route = "home"
     override val titleRes = R.string.app_name
 }
+val customDateFormat = LocalDate.Format {
+    dayOfMonth(); char(' '); monthName(MonthNames.ENGLISH_FULL); char(' '); year()
+}
+
+// Calendar left and right limits, goes from start of first month to end of last month
+const val MONTHS_BEFORE_CURRENT: Long = 6
+const val MONTHS_AFTER_CURRENT: Long = 48
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ViewScheduleScreen(
-    navigateToNewTask: () -> Unit,
-    navigateToEditTask: (TaskDetails) -> Unit,
+    // new Task has initial selected date set to the currently selected date
+    navigateToNewTask: (currentSelectedDate: LocalDate) -> Unit,
+    navigateToEditTask: (taskId: Int) -> Unit,
     viewModel: ScheduleViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val scheduleUiState = viewModel.scheduleUiState
     val coroutineScope = rememberCoroutineScope()
+    var deleteConfirmation by rememberSaveable {  mutableStateOf(false) }
+    val timedTaskState by viewModel.getTasksOnDate(
+        scheduleUiState.dateSelected,
+        scheduleUiState.dateSelected.plus(1, DateTimeUnit.DAY),
+        hasTime = true
+    ).collectAsState()
+    val todoTaskState by viewModel.getTasksOnDate(
+        scheduleUiState.dateSelected,
+        scheduleUiState.dateSelected.plus(1, DateTimeUnit.DAY),
+        hasTime = false
+    ).collectAsState()
+
     Scaffold(
         floatingActionButton = {
                 FloatingActionButton(
-                    onClick = { navigateToNewTask() },
+                    onClick = { navigateToNewTask(scheduleUiState.dateSelected) },
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.padding(20.dp)
                 ) {
@@ -96,60 +133,167 @@ fun ViewScheduleScreen(
                     )
                 }
         },
-        bottomBar = {  }
+        bottomBar = {  },
+        topBar = {
+            ViewScheduleTopAppBar(
+                title = scheduleUiState.dateSelected.format(customDateFormat),
+                onSelectCalendarDate = {
+                    if (it != null)
+                        viewModel.updateScheduleUiState(
+                            scheduleUiState.copy(dateSelected = it)
+                        )
+                },
+                selectedDate = scheduleUiState.dateSelected
+            )
+        }
     ) { innerPadding ->
-        WeekCalendarSegment(
-            dateSelected = scheduleUiState.dateSelected,
-            onSelectDate = {
-                viewModel.updateScheduleUiState(
-                    scheduleUiState.copy(dateSelected = it)
+        Box(modifier = Modifier.padding(innerPadding)) {
+            Column {
+                WeekCalendarSegment(
+                    dateSelected = scheduleUiState.dateSelected,
+                    onSelectDate = {
+                        viewModel.updateScheduleUiState(
+                            scheduleUiState.copy(dateSelected = it)
+                        )
+                    },
                 )
-            },
-        )
-        val timedTaskState by viewModel.getTasksOnDate(
-            scheduleUiState.dateSelected,
-            scheduleUiState.dateSelected.plus(1, DateTimeUnit.DAY),
-            hasTime = true
-        ).collectAsState()
-        val todoTaskState by viewModel.getTasksOnDate(
-            scheduleUiState.dateSelected,
-            scheduleUiState.dateSelected.plus(1, DateTimeUnit.DAY),
-            hasTime = false
-        ).collectAsState()
-
-        TaskBody(
-            onClearTaskSwipe = { swipeToDismissBoxValue, taskDetails ->
-                coroutineScope.launch { viewModel.deleteTask(taskDetails) }
-                true
-            },
-            timedTaskState = timedTaskState,
-            todoTaskState = todoTaskState,
-            onToggleNotif = {
-                coroutineScope.launch { viewModel.updateTask(it) }
-            },
-            contentPadding = innerPadding
-        )
+                TaskBody(
+                    onClearTaskSwipe = { swipeToDismissBoxValue, taskDetails ->
+                        when (swipeToDismissBoxValue) {
+                            SwipeToDismissBoxValue.EndToStart -> {
+                                viewModel.updateScheduleUiState(
+                                    scheduleUiState.copy(selectedTaskToDelete = taskDetails)
+                                )
+                                deleteConfirmation = true
+                                false
+                            }
+                            SwipeToDismissBoxValue.StartToEnd -> {
+                                coroutineScope.launch { viewModel.completeTask(taskDetails) }
+                                true
+                            }
+                            else -> true
+                        }
+                    },
+                    onToggleNotif = {
+                        coroutineScope.launch { viewModel.updateTask(it) }
+                    },
+                    onClickTask = {
+                        //TODO: provide a View TaskDetails screen with an OPTION to edit instead of directly edit
+                        navigateToEditTask(it)
+                    },
+                    timedTaskState = timedTaskState,
+                    todoTaskState = todoTaskState,
+                    contentPadding = innerPadding
+                )
+            }
+            if (deleteConfirmation) {
+                ConfirmationAlert(
+                    title = stringResource(R.string.delete_task_title),
+                    description = "Are you sure you want to delete the task?",
+                    onDismissRequest = {
+                        deleteConfirmation = false
+                    },
+                    onConfirmRequest = {
+                        coroutineScope.launch {
+                            viewModel.deleteTask(scheduleUiState.selectedTaskToDelete)
+                            deleteConfirmation = false
+                        }
+                    }
+                )
+            }
+        }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ViewScheduleTopAppBar(
+    title: String,
+    onSelectCalendarDate: (dateSelected: LocalDate?) -> Unit,
+    selectedDate: LocalDate,
+    modifier: Modifier = Modifier
+) {
+    CenterAlignedTopAppBar(
+        title = { Text(text = title) },
+        modifier = modifier,
+        actions = {
+            SimpleDateSelector(
+                onConfirmDate = onSelectCalendarDate,
+                selectedDate = selectedDate
+            )
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            titleContentColor = MaterialTheme.colorScheme.primary,
+        )
+    )
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SimpleDateSelector(
+    onConfirmDate: (LocalDate?) -> Unit,
+    selectedDate: LocalDate,
+) {
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = selectedDate.toEpochMillis(TimeZone.UTC),
+        yearRange = 2024..2025
+    )
+    LaunchedEffect(key1 = selectedDate) {
+        datePickerState.selectedDateMillis = selectedDate.toEpochMillis(TimeZone.UTC)
+    }
 
+    IconButton(
+        onClick = { showDatePicker = true }
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.calendar_icon),
+            contentDescription = stringResource(R.string.calendar_icon_desc),
+            modifier = Modifier.size(dimensionResource(id = R.dimen.icon_size))
+        )
+    }
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onConfirmDate(datePickerState.selectedDateMillis?.toUtcDate())
+                        showDatePicker = false
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDatePicker = false }
+                ) { Text("Cancel") }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+        {
+            DatePicker(state = datePickerState)
+        }
+    }
+}
 @Composable
 private fun WeekCalendarSegment(
     dateSelected: LocalDate,
-    onSelectDate: (LocalDate) -> Unit,
+    onSelectDate: (dateSelected: LocalDate) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    //TODO: convert all variable init to kotlinx datetime methods
     val currentDate = remember { getCurrentDate() }
     val currentMonth = remember { YearMonth.now() }
-    val startDate = remember { currentMonth.minusMonths(6).atStartOfMonth() } // Adjust as needed
-    val endDate = remember { currentMonth.plusMonths(48).atEndOfMonth() } // Adjust as needed
+    val startDate = remember { currentMonth.minusMonths(MONTHS_BEFORE_CURRENT).atStartOfMonth() } // Adjust as needed
+    val endDate = remember { currentMonth.plusMonths(MONTHS_AFTER_CURRENT).atEndOfMonth() } // Adjust as needed
     val weekCalendarState = rememberWeekCalendarState(
         startDate = startDate,
         endDate = endDate,
         firstVisibleWeekDate = currentDate.toJavaLocalDate(),
         firstDayOfWeek = DayOfWeek.MONDAY
     )
+    LaunchedEffect(dateSelected) {
+        weekCalendarState.animateScrollToWeek(dateSelected.toJavaLocalDate())
+    }
     WeekCalendar(
         state = weekCalendarState,
         dayContent = {
@@ -168,7 +312,11 @@ private val dayOfMonthFormat = LocalDate.Format {
     dayOfMonth()
 }
 @Composable
-private fun Day(date: LocalDate, isSelected: Boolean, onClick: (LocalDate) -> Unit) {
+private fun Day(
+    date: LocalDate,
+    isSelected: Boolean,
+    onClick: (dateOfDayClicked: LocalDate) -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -210,23 +358,28 @@ private fun Day(date: LocalDate, isSelected: Boolean, onClick: (LocalDate) -> Un
 @Composable
 private fun TaskBody(
     onClearTaskSwipe: (SwipeToDismissBoxValue, TaskDetails) -> Boolean,
+    onToggleNotif: (taskToggled: TaskDetails) -> Unit,
+    onClickTask: (taskId: Int) -> Unit,
     timedTaskState: ScheduleTaskState,
     todoTaskState: ScheduleTaskState,
-    onToggleNotif: (TaskDetails) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     Column(modifier = modifier) {
+        Text("Scheduled Tasks")
         TaskList(
             taskList = timedTaskState.taskList,
             onClearTaskSwipe = onClearTaskSwipe,
             onToggleNotif = onToggleNotif,
+            onClickTask = onClickTask,
             contentPadding = contentPadding
         )
+        Text(text = "TODOs")
         TaskList(
             taskList = todoTaskState.taskList,
             onClearTaskSwipe = onClearTaskSwipe,
             onToggleNotif = onToggleNotif,
+            onClickTask = onClickTask,
             contentPadding = contentPadding
         )
     }
@@ -238,6 +391,7 @@ fun TaskList(
     modifier: Modifier = Modifier,
     onToggleNotif: (TaskDetails) -> Unit = {},
     onClearTaskSwipe: (SwipeToDismissBoxValue, TaskDetails) -> Boolean,
+    onClickTask: (Int) -> Unit,
     taskList: List<TaskDetails> = listOf(),
     contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
@@ -249,28 +403,35 @@ fun TaskList(
             TaskCard(
                 onClearTaskSwipe = onClearTaskSwipe,
                 taskDetails = it,
-                onToggleNotif = onToggleNotif
+                onToggleNotif = onToggleNotif,
+                onClickTask = onClickTask
             )
         }
     }
 }
 
+private const val swipePercentage = 0.75f
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskCard(
     taskDetails: TaskDetails,
     modifier: Modifier = Modifier,
     onToggleNotif: (TaskDetails) -> Unit,
-            // function should handle both task deletion and completion
+    onClickTask: (Int) -> Unit,
+    // function should handle both task deletion and completion
     onClearTaskSwipe: (SwipeToDismissBoxValue, TaskDetails) -> Boolean,
 ) {
     var cardHeightDp by remember { mutableStateOf(0.dp) }
     var boxHeightDp by remember { mutableStateOf(0.dp) }
 
     val localDensity = LocalDensity.current
+    val threshold: Float = with(LocalConfiguration.current) {
+        (this.screenWidthDp * swipePercentage).dp.value
+    }
 
     val swipeToDismissBoxState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { onClearTaskSwipe(it, taskDetails) }
+        confirmValueChange = { onClearTaskSwipe(it, taskDetails) },
+        positionalThreshold = { threshold }
     )
     SwipeToDismissBox(
         state = swipeToDismissBoxState,
@@ -291,7 +452,7 @@ fun TaskCard(
             }
         ) {
             Card(
-                onClick = { /*TODO: View/Edit task details*/ },
+                onClick = { onClickTask(taskDetails.taskId) },
                 modifier = modifier
                     .wrapContentHeight()
                     .padding(vertical = 10.dp)
@@ -318,12 +479,12 @@ fun TaskCard(
                     ) {
                         if (taskDetails.notificationsEnabled)
                             Icon(
-                                painter = painterResource(id = R.drawable.baseline_notifications_none_24),
+                                painter = painterResource(id = R.drawable.baseline_notifications_active_24),
                                 contentDescription = stringResource(R.string.notifications_disabled)
                             )
                         else
                             Icon(
-                                painter = painterResource(id = R.drawable.baseline_notifications_active_24),
+                                painter = painterResource(id = R.drawable.baseline_notifications_none_24),
                                 contentDescription = stringResource(R.string.notifications_enabled)
                             )
 
@@ -396,7 +557,8 @@ fun TaskCardPreview() {
         TaskCard(
             taskDetails = TaskDetails(name = "Test Task 1", recurringType = RecurringType.Weekly()),
             onClearTaskSwipe = {_,_ -> true},
-            onToggleNotif = {}
+            onToggleNotif = {},
+            onClickTask = {}
         )
 
     }
@@ -418,7 +580,8 @@ fun TaskListPreview() {
                 TaskDetails(name = "Daily Recurring", recurringType = RecurringType.Daily()),
                 TaskDetails(name = "Not Recurring")
             ),
-            onClearTaskSwipe = {_,_ -> true}
+            onClearTaskSwipe = {_,_ -> true},
+            onClickTask = {}
         )
     }
 }

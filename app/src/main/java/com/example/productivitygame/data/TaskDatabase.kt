@@ -58,14 +58,15 @@ class Converters {
         recurringType?.let { it::class.simpleName } ?: "None"
 
     private fun getBitRepresent(dayOfWeek: DayOfWeek): Int = 2.0.pow(dayOfWeek.ordinal).toInt()
-    // Uses bitmask
+
+    // Uses bitmask - 0 means no selected days
     @TypeConverter
-    fun daysOfWeekSetToInt(selectedDays: Set<DayOfWeek>?): Int? =
-        selectedDays?.fold(0) { sum, dayOfWeek -> sum + getBitRepresent(dayOfWeek) }
+    fun daysOfWeekSetToInt(selectedDays: Set<DayOfWeek>?): Int =
+        selectedDays?.fold(0) { sum, dayOfWeek -> sum + getBitRepresent(dayOfWeek) } ?: 0
 
     @TypeConverter
-    fun daysOfWeekSetToInt(selectedDays: Int?): Set<DayOfWeek>? =
-        if (selectedDays != null) {
+    fun intToDaysOfWeekSet(selectedDays: Int): Set<DayOfWeek>? =
+        if (selectedDays != 0) {
             buildSet {
                 for (dayOfWeek in DayOfWeek.entries) {
                     // if > 0, means that particular day is selected
@@ -74,12 +75,9 @@ class Converters {
                 }
             }
         } else null
-
-
-
 }
 
-@Database(entities = [Task::class, RecurringCategory::class], version = 9, exportSchema = false)
+@Database(entities = [Task::class, RecurringCategory::class], version = 10, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class TaskDatabase: RoomDatabase() {
     abstract fun recurringTaskDao(): RecurringCatAndTaskDao

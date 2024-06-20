@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 
 class ScheduleViewModel(
@@ -26,7 +27,6 @@ class ScheduleViewModel(
     fun updateScheduleUiState(newScheduleUiState: ScheduleUiState) {
         scheduleUiState = newScheduleUiState
     }
-    //TODO: split the tasks to timed and untimed, and also sort by time for timed tasks
     fun getTasksOnDate(
         startDate: LocalDate,
         endDate: LocalDate,
@@ -51,6 +51,22 @@ class ScheduleViewModel(
     suspend fun deleteTask(taskDetails: TaskDetails) {
         recurringCatAndTaskDao.delete(taskDetails.toTask())
     }
+    suspend fun completeTask(taskDetails: TaskDetails) {
+        val task = taskDetails.toTask()
+        if (taskDetails.recurringType != null){
+            recurringCatAndTaskDao.update(
+                task.copy(datetimeInstant =
+                    task.datetimeInstant.plus(
+                        value = 1,
+                        unit = taskDetails.recurringType.interval,
+                        timeZone = TimeZone.currentSystemDefault()
+                    )
+                )
+            )
+        } else {
+            recurringCatAndTaskDao.delete(task)
+        }
+    }
     //No change should be made to RecurringCat through this viewModel, so only task updated
     suspend fun updateTask(taskDetails: TaskDetails) {
         recurringCatAndTaskDao.update(taskDetails.toTask())
@@ -61,7 +77,8 @@ class ScheduleViewModel(
 }
 
 data class ScheduleUiState(
-    val dateSelected: LocalDate = getCurrentDate()
+    val dateSelected: LocalDate = getCurrentDate(),
+    val selectedTaskToDelete: TaskDetails = TaskDetails()
 )
 
 data class ScheduleTaskState(
@@ -81,6 +98,7 @@ fun TaskAndRecurringCat.toTaskDetails(): TaskDetails {
         date = localDatetime.date,
         time = if (task.hasTime) localDatetime.time else null,
         durationInMillis = task.durationInMillis,
+        selectedDays = recurringCategory.daysOfWeek ?: setOf()
     )
 }
 

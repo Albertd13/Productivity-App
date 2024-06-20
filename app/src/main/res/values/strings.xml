@@ -22,4 +22,7 @@
     <string name="home_nav_label">Home</string>
     <string name="schedule_nav_label">Home</string>
     <string name="timer_nav_label">Home</string>
+    <string name="dialog_dissmiss_text">Dismiss</string>
+    <string name="dialog_confirm_text">Confirm</string>
+    <string name="delete_task_title">Delete Task?</string>
 </resources>
