@@ -9,6 +9,7 @@ import com.example.productivitygame.ProductivityGameApplication
 import com.example.productivitygame.ui.viewmodels.AddTaskViewModel
 import com.example.productivitygame.ui.viewmodels.EditTaskViewModel
 import com.example.productivitygame.ui.viewmodels.ScheduleViewModel
+import com.example.productivitygame.ui.viewmodels.TimerViewModel
 
 
 object AppViewModelProvider {
@@ -16,19 +17,26 @@ object AppViewModelProvider {
         // Initializer for ItemEditViewModel
         initializer {
             AddTaskViewModel(
-                recurringCatAndTaskDao = application().container.recurringCatAndTaskDao
+                recurringCatAndTaskDao = application().container.recurringCatAndTaskDao,
+                notificationExactScheduler = application().container.notificationScheduler,
+                this.createSavedStateHandle()
             )
         }
         initializer {
             ScheduleViewModel(
-                recurringCatAndTaskDao = application().container.recurringCatAndTaskDao
+                recurringCatAndTaskDao = application().container.recurringCatAndTaskDao,
+                notificationExactScheduler = application().container.notificationScheduler
             )
         }
         initializer {
             EditTaskViewModel(
                 recurringCatAndTaskDao = application().container.recurringCatAndTaskDao,
+                notificationExactScheduler = application().container.notificationScheduler,
                 savedStateHandle = this.createSavedStateHandle()
             )
+        }
+        initializer {
+            TimerViewModel()
         }
     }
 }

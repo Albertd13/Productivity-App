@@ -17,6 +17,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.productivitygame.R
 import com.example.productivitygame.ui.screens.ScheduleDestination
+import com.example.productivitygame.ui.screens.TimerDestination
 
 sealed class Screen(val route: String, @StringRes val labelResId: Int, @DrawableRes val iconResId: Int) {
     data object Home:
@@ -24,14 +25,12 @@ sealed class Screen(val route: String, @StringRes val labelResId: Int, @Drawable
     data object Schedule:
         Screen(ScheduleDestination.route, R.string.schedule_nav_label, R.drawable.calendar_icon)
     data object Timer:
-        Screen("", R.string.timer_nav_label, R.drawable.clock_icon)
+        Screen(TimerDestination.route, R.string.timer_nav_label, R.drawable.clock_icon)
 }
 
 val items = listOf(
-    /*
-    Screen.Home,
+    //Screen.Home,
     Screen.Timer,
-     */
     Screen.Schedule
 )
 @Composable

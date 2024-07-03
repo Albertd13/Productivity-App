@@ -20,9 +20,16 @@
     <string name="add_task">Add Task</string>
     <string name="save_task">Save Task</string>
     <string name="home_nav_label">Home</string>
-    <string name="schedule_nav_label">Home</string>
-    <string name="timer_nav_label">Home</string>
+    <string name="schedule_nav_label">Schedule</string>
+    <string name="timer_nav_label">Timer</string>
     <string name="dialog_dissmiss_text">Dismiss</string>
     <string name="dialog_confirm_text">Confirm</string>
     <string name="delete_task_title">Delete Task?</string>
+    <string name="add_task_title">Add New Task</string>
+    <string name="edit_task_title">Edit Task</string>
+    <string name="start_button">Start</string>
+    <string name="pause_button">Pause</string>
+    <string name="resume_button">Resume</string>
+    <string name="next_section">Next</string>
+    <string name="focus_timer_title">Focus Timer</string>
 </resources>

@@ -1,6 +1,5 @@
 package com.example.productivitygame.ui.screens
 
-import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +24,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,6 +54,7 @@ import com.example.productivitygame.navigation.NavigationDestination
 import com.example.productivitygame.ui.AppViewModelProvider
 import com.example.productivitygame.ui.TaskSelectableDates
 import com.example.productivitygame.ui.components.BetterTextField
+import com.example.productivitygame.ui.components.DefaultTopAppBar
 import com.example.productivitygame.ui.components.TimePickerDialog
 import com.example.productivitygame.ui.utils.getCurrentDate
 import com.example.productivitygame.ui.utils.toEpochMillis
@@ -75,8 +76,8 @@ import java.util.Locale
 
 object AddTaskDestination : NavigationDestination {
     override val route = "add_task"
-    override val titleRes = R.string.app_name
-    const val selectedDateInUTCMillisArg = "selected_date"
+    override val titleRes = R.string.add_task_title
+    val selectedDateInUTCMillisArg = "selected_date"
     val routeWithArgs = "$route?$selectedDateInUTCMillisArg={$selectedDateInUTCMillisArg}"
 }
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,34 +85,33 @@ object AddTaskDestination : NavigationDestination {
 fun AddTaskScreen(
     navigateBack: () -> Unit,
     modifier: Modifier = Modifier,
-    preSelectedDate: LocalDate? = null,
     productive: Boolean = true,
     viewModel: AddTaskViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
-    if (preSelectedDate != null)
-        viewModel.updateUiState(viewModel.taskUiState.taskDetails.copy(date = preSelectedDate))
     val coroutineScope = rememberCoroutineScope()
     SaveTaskForm(
+        navigateBack = navigateBack,
         taskDetails = viewModel.taskUiState.taskDetails,
         datePickerState = viewModel.datePickerState,
         onValueChange = viewModel::updateUiState,
         onSavePressed = {
             coroutineScope.launch {
                 viewModel.saveItem()
-                navigateBack()
             }
+            navigateBack()
         },
         onOpenDatePickerDialog = { viewModel.updateDatePickerState(it) },
         updateSelectableDates = { viewModel.getCurrentSelectableDates() },
         isEntryValid = viewModel.taskUiState.isEntryValid,
-        modifier = modifier
+        modifier = modifier,
+        topAppBarTitle = stringResource(AddTaskDestination.titleRes)
     )
 }
 
 object EditTaskDestination : NavigationDestination {
     override val route = "edit_task"
-    override val titleRes = R.string.app_name
-    const val taskIdArg = "taskId"
+    override val titleRes = R.string.edit_task_title
+    val taskIdArg = "taskId"
     val routeWithArgs = "$route/{$taskIdArg}"
 }
 @OptIn(ExperimentalMaterial3Api::class)
@@ -123,8 +123,9 @@ fun EditTaskScreen(
     viewModel: EditTaskViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val coroutineScope = rememberCoroutineScope()
-    Log.d("HELLO", "${viewModel.taskUiState.taskDetails.recurringType}")
     SaveTaskForm(
+        navigateBack = navigateBack,
+        topAppBarTitle = stringResource(id = EditTaskDestination.titleRes),
         taskDetails = viewModel.taskUiState.taskDetails,
         datePickerState = viewModel.datePickerState,
         onValueChange = viewModel::updateUiState,
@@ -144,6 +145,7 @@ fun EditTaskScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SaveTaskForm(
+    topAppBarTitle: String,
     taskDetails: TaskDetails,
     datePickerState: DatePickerState,
     onValueChange: (TaskDetails) -> Unit,
@@ -151,7 +153,8 @@ fun SaveTaskForm(
     onOpenDatePickerDialog: (DatePickerState) -> Unit,
     updateSelectableDates: () -> TaskSelectableDates,
     modifier: Modifier = Modifier,
-    isEntryValid: Boolean = false,
+    navigateBack: () -> Unit = {},
+    isEntryValid: Boolean = false
 ) {
     var isInvalidInputPopupVisible by remember { mutableStateOf(false) }
     LaunchedEffect(key1 = isInvalidInputPopupVisible) {
@@ -166,96 +169,110 @@ fun SaveTaskForm(
     if (taskDetails.recurringType != null) {
         recurringSelectorEnabled = true
     }
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentHeight(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(modifier = modifier) {
-            // Name Field (compulsory)
-            OutlinedTextField(
-                value = taskDetails.name,
-                onValueChange = { onValueChange(taskDetails.copy(name = it)) },
-                label = { Text(text = stringResource(R.string.task_name)) },
-                modifier = Modifier.fillMaxWidth(),
+    Scaffold(
+        topBar = {
+            DefaultTopAppBar(
+                titleText = topAppBarTitle,
+                navigateBack = navigateBack,
+                canNavigateBack = true
             )
-            // Notes Field (optional)
-            OutlinedTextField(
-                value = taskDetails.notes,
-                onValueChange = { onValueChange(taskDetails.copy(notes = it)) },
-                placeholder = {
-                    Text(
-                        text = stringResource(R.string.add_note_placeholder),
-                        fontWeight = FontWeight.Light
-                    )
-                },
-                label = { Text(text = stringResource(R.string.add_note_label)) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
-            )
-            // Notifications Toggle
-            ToggleWithTextRow(
-                text = stringResource(R.string.notifications_toggle),
-                checked = taskDetails.notificationsEnabled,
-                onCheckedChange = { onValueChange(taskDetails.copy(notificationsEnabled = it)) }
-            )
-            // Recurring Toggle
-            RecurringToggle(
-                recurringType = taskDetails.recurringType,
-                selectorEnabled = recurringSelectorEnabled,
-                onCheckedChange = {
-                    recurringSelectorEnabled = it
-                    if (!it) onValueChange(taskDetails.copy(recurringType = null))
-                },
-                onTypeChange = { onValueChange(taskDetails.copy(recurringType = it)) },
-                selectedDays = taskDetails.selectedDays,
-                onSelectDay = {
-                    with(taskDetails) {
-                        val newSet =
-                            if (selectedDays.contains(it)) selectedDays.minusElement(it)
-                            else selectedDays.plusElement(it)
-                        onValueChange(copy(selectedDays = newSet))
+        },
+        modifier = modifier
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+                .padding(innerPadding),
+            contentAlignment = Alignment.Center
+        ) {
+            Column {
+                // Name Field (compulsory)
+                OutlinedTextField(
+                    value = taskDetails.name,
+                    onValueChange = { onValueChange(taskDetails.copy(name = it)) },
+                    label = { Text(text = stringResource(R.string.task_name)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                // Notes Field (optional)
+                OutlinedTextField(
+                    value = taskDetails.notes,
+                    onValueChange = { onValueChange(taskDetails.copy(notes = it)) },
+                    placeholder = {
+                        Text(
+                            text = stringResource(R.string.add_note_placeholder),
+                            fontWeight = FontWeight.Light
+                        )
+                    },
+                    label = { Text(text = stringResource(R.string.add_note_label)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                )
+                // Notifications Toggle
+                ToggleWithTextRow(
+                    text = stringResource(R.string.notifications_toggle),
+                    checked = taskDetails.notificationsEnabled,
+                    onCheckedChange = { onValueChange(taskDetails.copy(notificationsEnabled = it)) }
+                )
+                // Recurring Toggle
+                RecurringToggle(
+                    recurringType = taskDetails.recurringType,
+                    selectorEnabled = recurringSelectorEnabled,
+                    onCheckedChange = {
+                        recurringSelectorEnabled = it
+                        if (!it) onValueChange(taskDetails.copy(recurringType = null))
+                    },
+                    onTypeChange = { onValueChange(taskDetails.copy(recurringType = it)) },
+                    selectedDays = taskDetails.selectedDays,
+                    onSelectDay = {
+                        with(taskDetails) {
+                            val newSet =
+                                if (selectedDays.contains(it)) selectedDays.minusElement(it)
+                                else selectedDays.plusElement(it)
+                            onValueChange(copy(selectedDays = newSet))
+                        }
+                    }
+                )
+                // Date Picker (optional)
+                DateSelectorRow(
+                    savedDate = taskDetails.date,
+                    onConfirmDate = {
+                        if (it != null) onValueChange(taskDetails.copy(date = it.toUtcDate()))
+                        if (it != null) onValueChange(taskDetails.copy(date = it.toUtcDate()))
+                    },
+                    taskDetails = taskDetails,
+                    datePickerState = datePickerState,
+                    onOpenDatePickerDialog = onOpenDatePickerDialog,
+                    updateSelectableDates = updateSelectableDates
+                )
+                TimeSelector(
+                    savedTime = taskDetails.time,
+                    onConfirmTime = { hour, minute ->
+                        onValueChange(
+                            taskDetails.copy(time = LocalTime(hour, minute))
+                        )
+                    }
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    // Save Button
+                    Button(
+                        onClick = {
+                            onSavePressed()
+                            if (!isEntryValid) isInvalidInputPopupVisible = true
+                        },
+                        enabled = isEntryValid
+                    ) {
+                        Text(text = stringResource(R.string.save_task))
                     }
                 }
-            )
-            // Date Picker (optional)
-            DateSelectorRow(
-                savedDate = taskDetails.date,
-                onConfirmDate = {
-                    if (it != null) onValueChange(taskDetails.copy(date = it.toUtcDate()))
-                    if (it != null) onValueChange(taskDetails.copy(date = it.toUtcDate()))
-                },
-                taskDetails = taskDetails,
-                datePickerState = datePickerState,
-                onOpenDatePickerDialog = onOpenDatePickerDialog,
-                updateSelectableDates = updateSelectableDates
-            )
-            TimeSelector(
-                savedTime = taskDetails.time,
-                onConfirmTime = { hour, minute ->
-                    onValueChange(
-                        taskDetails.copy(time = LocalTime(hour, minute))
-                    )
-                }
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Button(
-                    onClick = {
-                        onSavePressed()
-                        if (!isEntryValid) isInvalidInputPopupVisible = true
-                    },
-                ) {
-                    Text(text = stringResource(R.string.save_task))
-                }
             }
-        }
-        if (isInvalidInputPopupVisible) {
-            Text(text = "Invalid Input")
+            if (isInvalidInputPopupVisible) {
+                Text(text = "Invalid Input")
+            }
         }
     }
 }
@@ -466,9 +483,9 @@ fun DateSelectorRow(
                                         initialUTCDateMillis
                                     } else {
                                         val originalSelection = savedDate.toEpochMillis(TimeZone.UTC)
-                                        if (newSelectableDates.isSelectableDate(originalSelection))
+                                        if (newSelectableDates.isSelectableDate(originalSelection)) {
                                             originalSelection
-                                        else null
+                                        } else null
                                     },
                                 yearRange = yearRange,
                                 initialDisplayMode = displayMode,

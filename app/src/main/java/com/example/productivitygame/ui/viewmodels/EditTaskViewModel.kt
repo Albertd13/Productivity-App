@@ -11,14 +11,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.productivitygame.data.RecurringCatAndTaskDao
 import com.example.productivitygame.data.RecurringType
+import com.example.productivitygame.notifications.NotificationExactScheduler
 import com.example.productivitygame.ui.TaskSelectableDates
 import com.example.productivitygame.ui.screens.EditTaskDestination
 import com.example.productivitygame.ui.utils.getCurrentDate
+import com.example.productivitygame.ui.utils.getRecurringCat
 import com.example.productivitygame.ui.utils.toEpochMillis
+import com.example.productivitygame.ui.utils.toTask
+import com.example.productivitygame.ui.utils.toTaskUiState
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.plus
@@ -26,21 +28,18 @@ import java.util.Locale
 
 class EditTaskViewModel(
     private val recurringCatAndTaskDao: RecurringCatAndTaskDao,
+    private val notificationExactScheduler: NotificationExactScheduler,
     savedStateHandle: SavedStateHandle
 ): ViewModel() {
     private val taskId: Int = checkNotNull(savedStateHandle[EditTaskDestination.taskIdArg])
     var taskUiState by mutableStateOf(TaskUiState())
         private set
-    private var originalTaskName: String
-    private var originalSelectedDays: Set<DayOfWeek> = setOf()
+    private var originalTaskDetails: TaskDetails = TaskDetails()
     init {
         viewModelScope.launch {
-            taskUiState = runBlocking { recurringCatAndTaskDao.getTaskWithId(taskId) }
-                .toTaskUiState(true)
+            taskUiState = recurringCatAndTaskDao.getTaskWithId(taskId).toTaskUiState(true)
         }
-        originalTaskName = taskUiState.taskDetails.name
-        originalSelectedDays = taskUiState.taskDetails.selectedDays
-        Log.d("ORIGINALNAME", originalTaskName)
+        originalTaskDetails = taskUiState.taskDetails.copy()
     }
     @OptIn(ExperimentalMaterial3Api::class)
     var datePickerState by mutableStateOf(
@@ -95,27 +94,31 @@ class EditTaskViewModel(
                             }
                         }
                     } else listOf(toTask())
+                taskList.forEach {
+                    notificationExactScheduler.updateNotifications(it)
+                }
                 recurringCatAndTaskDao.insertRecurringTasks(
                     recurringCategory = getRecurringCat(),
-                    insertedTasks = taskList
+                    tasksToInsert = taskList
                 )
             }
         } else {
             Log.d("INVALID", "${taskUiState.taskDetails}")
         }
     }
+
     suspend fun updateItem() {
-        if (taskUiState.taskDetails.selectedDays == originalSelectedDays) {
-            viewModelScope.launch {
-                recurringCatAndTaskDao.update(taskUiState.taskDetails.toTask())
-            }
+        //if no change in days of week, task can be directly updated
+        if (taskUiState.taskDetails.selectedDays == originalTaskDetails.selectedDays) {
+            val task = taskUiState.taskDetails.toTask()
+            notificationExactScheduler.updateNotifications(task)
+            recurringCatAndTaskDao.update(task)
         } else {
-            viewModelScope.launch {
-                recurringCatAndTaskDao.deleteRecurringTasksWithName(
-                    recurringCatId = taskUiState.taskDetails.recurringCatId,
-                    taskName = originalTaskName
-                )
-            }
+            val deletedTaskIds = recurringCatAndTaskDao.deleteTasksByCatIdAndName(
+                recurringCatId = taskUiState.taskDetails.recurringCatId,
+                taskName = originalTaskDetails.name
+            )
+            notificationExactScheduler.cancelNotifications(deletedTaskIds)
             saveNewTasks()
         }
     }

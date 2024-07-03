@@ -77,7 +77,7 @@ class Converters {
         } else null
 }
 
-@Database(entities = [Task::class, RecurringCategory::class], version = 10, exportSchema = false)
+@Database(entities = [Task::class, RecurringCategory::class], version = 11, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class TaskDatabase: RoomDatabase() {
     abstract fun recurringTaskDao(): RecurringCatAndTaskDao
@@ -89,7 +89,7 @@ abstract class TaskDatabase: RoomDatabase() {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, TaskDatabase::class.java, "app_database")
                     .fallbackToDestructiveMigration()
-                    /* Pre Populate with dummy data (not done)
+                    /* Pre Populate with dummy data (no need for now)
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)

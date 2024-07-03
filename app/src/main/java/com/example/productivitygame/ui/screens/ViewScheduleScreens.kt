@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -106,6 +105,7 @@ fun ViewScheduleScreen(
     navigateToEditTask: (taskId: Int) -> Unit,
     viewModel: ScheduleViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
+
     val scheduleUiState = viewModel.scheduleUiState
     val coroutineScope = rememberCoroutineScope()
     var deleteConfirmation by rememberSaveable {  mutableStateOf(false) }
@@ -114,6 +114,7 @@ fun ViewScheduleScreen(
         scheduleUiState.dateSelected.plus(1, DateTimeUnit.DAY),
         hasTime = true
     ).collectAsState()
+
     val todoTaskState by viewModel.getTasksOnDate(
         scheduleUiState.dateSelected,
         scheduleUiState.dateSelected.plus(1, DateTimeUnit.DAY),
@@ -175,7 +176,7 @@ fun ViewScheduleScreen(
                         }
                     },
                     onToggleNotif = {
-                        coroutineScope.launch { viewModel.updateTask(it) }
+                        coroutineScope.launch { viewModel.toggleTaskNotification(it) }
                     },
                     onClickTask = {
                         //TODO: provide a View TaskDetails screen with an OPTION to edit instead of directly edit
@@ -183,7 +184,6 @@ fun ViewScheduleScreen(
                     },
                     timedTaskState = timedTaskState,
                     todoTaskState = todoTaskState,
-                    contentPadding = innerPadding
                 )
             }
             if (deleteConfirmation) {
@@ -363,24 +363,19 @@ private fun TaskBody(
     timedTaskState: ScheduleTaskState,
     todoTaskState: ScheduleTaskState,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     Column(modifier = modifier) {
-        Text("Scheduled Tasks")
         TaskList(
             taskList = timedTaskState.taskList,
             onClearTaskSwipe = onClearTaskSwipe,
             onToggleNotif = onToggleNotif,
             onClickTask = onClickTask,
-            contentPadding = contentPadding
         )
-        Text(text = "TODOs")
         TaskList(
             taskList = todoTaskState.taskList,
             onClearTaskSwipe = onClearTaskSwipe,
             onToggleNotif = onToggleNotif,
             onClickTask = onClickTask,
-            contentPadding = contentPadding
         )
     }
 }
@@ -393,11 +388,9 @@ fun TaskList(
     onClearTaskSwipe: (SwipeToDismissBoxValue, TaskDetails) -> Boolean,
     onClickTask: (Int) -> Unit,
     taskList: List<TaskDetails> = listOf(),
-    contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     LazyColumn(
         modifier = modifier,
-        contentPadding = contentPadding
     ) {
         items(taskList) {
             TaskCard(
@@ -470,13 +463,7 @@ fun TaskCard(
                     Text(
                         text = taskDetails.name,
                     )
-                    IconButton(
-                        onClick = {
-                            onToggleNotif(
-                                taskDetails.copy(notificationsEnabled = !taskDetails.notificationsEnabled)
-                            )
-                        }
-                    ) {
+                    IconButton(onClick = { onToggleNotif(taskDetails) }) {
                         if (taskDetails.notificationsEnabled)
                             Icon(
                                 painter = painterResource(id = R.drawable.baseline_notifications_active_24),
@@ -535,7 +522,7 @@ fun SwipeBackground(
                     Arrangement.End
                 } else { Arrangement.Start },
             verticalAlignment = Alignment.CenterVertically
-        ){
+        ) {
             Icon(
                 painter = painterResource(
                     id = if (dismissDirection == SwipeToDismissBoxValue.EndToStart)

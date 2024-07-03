@@ -5,6 +5,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import androidx.room.Relation
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.Instant
@@ -51,7 +52,6 @@ data class Task(
     //indices = [Index(value = ["type", "interval", "daysOfWeek"], unique = true)]
 )
 data class RecurringCategory (
-    // 1st value is for a dummy record for tasks without recurring cats
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     // null value is for dummy record
@@ -70,14 +70,12 @@ data class TaskReward(
     val conGain: Int? = null
 )
 
-// Currently unrequired since theres no retrieval of Recurring Tasks YET
-/*
-data class RecurringTask(
-    @Embedded val recurringCategory: RecurringCategory,
+data class TaskAndRecurringCat(
+    @Embedded
+    val task: Task,
     @Relation(
         parentColumn = "recurringCatId",
         entityColumn = "id"
     )
-    val tasks: List<Task>
+    val recurringCategory: RecurringCategory
 )
-*/

@@ -11,10 +11,11 @@ import com.example.productivitygame.ui.screens.AddTaskDestination
 import com.example.productivitygame.ui.screens.AddTaskScreen
 import com.example.productivitygame.ui.screens.EditTaskDestination
 import com.example.productivitygame.ui.screens.EditTaskScreen
+import com.example.productivitygame.ui.screens.FocusTimerScreen
 import com.example.productivitygame.ui.screens.ScheduleDestination
+import com.example.productivitygame.ui.screens.TimerDestination
 import com.example.productivitygame.ui.screens.ViewScheduleScreen
 import com.example.productivitygame.ui.utils.toEpochMillis
-import com.example.productivitygame.ui.utils.toUtcDate
 import kotlinx.datetime.TimeZone
 
 @Composable
@@ -48,8 +49,6 @@ fun InventoryNavHost(
             )
         ) {
             AddTaskScreen(
-                preSelectedDate =
-                    it.arguments?.getLong(AddTaskDestination.selectedDateInUTCMillisArg)?.toUtcDate(),
                 navigateBack = { navController.popBackStack() }
             )
         }
@@ -61,6 +60,11 @@ fun InventoryNavHost(
                 })
         ) {
             EditTaskScreen(navigateBack = { navController.popBackStack() })
+        }
+        composable(
+            route = TimerDestination.route
+        ) {
+            FocusTimerScreen()
         }
     }
 }

@@ -1,17 +1,13 @@
 package com.example.productivitygame.data
 
-import android.util.Log
 import androidx.room.Dao
 import androidx.room.Delete
-import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Relation
 import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.Instant
@@ -20,9 +16,12 @@ import kotlinx.datetime.Instant
 interface RecurringCatAndTaskDao {
     // returns rowId of inserted item
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(item: Task)
+    suspend fun insert(task: Task)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(taskList: List<Task>): List<Long>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(item: RecurringCategory): Long
+    fun insert(item: RecurringCategory): Long
 
     @Update
     suspend fun update(item: Task)
@@ -35,31 +34,54 @@ interface RecurringCatAndTaskDao {
     suspend fun delete(item: RecurringCategory)
 
     // if it doesnt exist in database insert and return id
-    fun getIdOfRecurringCat(recurringCategory: RecurringCategory): Int =
+    @Transaction
+    suspend fun getIdOfRecurringCat(recurringCategory: RecurringCategory): Int =
         getIdOf(recurringCategory.interval, recurringCategory.type, recurringCategory.daysOfWeek) ?:
-        getIdFromRowId(runBlocking { insert(recurringCategory.copy(id = 0)) })
+        getIdFromRowId(insert(recurringCategory.copy(id = 0)))
+
     @Query("SELECT id FROM RecurringCats WHERE type = :recurringType AND interval = :interval AND daysOfWeek = :daysOfWeek LIMIT 1")
-    fun getIdOf(interval: DateTimeUnit, recurringType: RecurringType?, daysOfWeek: Set<DayOfWeek>?): Int?
+    suspend fun getIdOf(interval: DateTimeUnit, recurringType: RecurringType?, daysOfWeek: Set<DayOfWeek>?): Int?
 
     // Get the id value given an internal row id
     @Query("SELECT id FROM RecurringCats WHERE rowid = :rowId LIMIT 1")
-    fun getIdFromRowId(rowId: Long): Int
+    suspend fun getIdFromRowId(rowId: Long): Int
 
-    @Query("DELETE FROM TaskList WHERE " +
+    @Query("SELECT * FROM TaskList WHERE rowid IN (:rowIdList)")
+    suspend fun getTasksFromRowIds(rowIdList: List<Long>): List<Task>
+    /**
+     * Returns a list of taskIds of the deleted tasks
+     */
+    @Transaction
+    suspend fun deleteTasksByCatIdAndName(recurringCatId: Int, taskName: String): List<Int> {
+        val ids = getMatchingTaskIds(recurringCatId, taskName)
+        deleteTasksWithIds(ids)
+        return ids
+    }
+
+    @Query("SELECT id FROM TaskList WHERE " +
             "recurringCatId = :recurringCatId AND name = :taskName")
-    suspend fun deleteRecurringTasksWithName(recurringCatId: Int, taskName: String): Int
+    suspend fun getMatchingTaskIds(recurringCatId: Int, taskName: String): List<Int>
+
+    @Query("DELETE FROM TaskList WHERE id IN (:idList)")
+    suspend fun deleteTasksWithIds(idList: List<Int>)
+
+    @Transaction
+    suspend fun insertAndReturnRecurringTasks(
+        recurringCategory: RecurringCategory,
+        insertedTasks: List<Task>
+    ): List<Task> = getTasksFromRowIds(
+        insertRecurringTasks(recurringCategory, insertedTasks)
+    )
 
     @Transaction
     suspend fun insertRecurringTasks(
         recurringCategory: RecurringCategory,
-        insertedTasks: List<Task>
-    ) {
+        tasksToInsert: List<Task>
+    ): List<Long> {
         val recurringCatId = getIdOfRecurringCat(recurringCategory)
-        insertedTasks.forEach {
-            insert(it.copy(recurringCatId = recurringCatId))
-        }
-        Log.d("INSERT", "Inserted Recurring Tasks")
+        return insert(tasksToInsert.map { it.copy(recurringCatId = recurringCatId) })
     }
+
     @Transaction
     @Query("SELECT * FROM TaskList WHERE " +
             "datetimeInstant >= :instantStart AND " +
@@ -74,16 +96,4 @@ interface RecurringCatAndTaskDao {
     @Transaction
     @Query("SELECT * FROM TaskList WHERE id = :taskId")
     suspend fun getTaskWithId(taskId: Int): TaskAndRecurringCat
-
 }
-
-data class TaskAndRecurringCat(
-    @Embedded
-    val task: Task,
-    @Relation(
-        parentColumn = "recurringCatId",
-        entityColumn = "id"
-    )
-    val recurringCategory: RecurringCategory
-)
-
