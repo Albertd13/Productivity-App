@@ -1,7 +1,7 @@
 package com.example.productivitygame.ui.utils
 
 import androidx.compose.ui.graphics.Color
-import com.example.productivitygame.data.FocusPlan
+import com.example.productivitygame.data.FocusPlanDetails
 import com.example.productivitygame.data.RecurringCategory
 import com.example.productivitygame.data.Task
 import com.example.productivitygame.data.TaskAndRecurringCat
@@ -14,11 +14,13 @@ import com.example.productivitygame.ui.screens.WorkSegment
 import com.example.productivitygame.ui.viewmodels.TaskDetails
 import com.example.productivitygame.ui.viewmodels.TaskUiState
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
+import java.util.Locale
 import kotlin.time.Duration
 
 fun Task.getAlarmItem(): TaskAlarmItem =
@@ -92,7 +94,7 @@ fun TaskAndRecurringCat.toTaskUiState(isEntryValid: Boolean = false): TaskUiStat
         isEntryValid = isEntryValid
     )
 
-fun FocusPlan.generateFocusSequence (totalWorkTime: Duration): List<CountdownItem> {
+fun FocusPlanDetails.generateFocusSequence (totalWorkTime: Duration): List<CountdownItem> {
     var remainingTime = totalWorkTime
     val originalCycles = cycles ?: -1
     var remainingCycles = originalCycles
@@ -114,3 +116,14 @@ fun FocusPlan.generateFocusSequence (totalWorkTime: Duration): List<CountdownIte
         add(WorkSegment(remainingTime))
     }
 }
+
+fun Duration.format(format: String): String {
+    return String.format(Locale.getDefault(), format, inWholeHours, inWholeMinutes % 60, inWholeSeconds % 60)
+}
+
+// epoch millis to UTC date
+fun <EpochMillis: Long>EpochMillis.toUtcDate(): LocalDate =
+    LocalDate.fromEpochDays((this / 86400000).toInt())
+
+fun LocalDate.toEpochMillis(zone: TimeZone = TimeZone.currentSystemDefault()) =
+    this.atStartOfDayIn(zone).toEpochMilliseconds()

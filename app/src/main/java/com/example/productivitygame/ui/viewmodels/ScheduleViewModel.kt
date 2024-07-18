@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.productivitygame.data.RecurringCatAndTaskDao
+import com.example.productivitygame.data.dao.RecurringCatAndTaskDao
 import com.example.productivitygame.notifications.NotificationExactScheduler
 import com.example.productivitygame.ui.utils.getAlarmItem
 import com.example.productivitygame.ui.utils.getCurrentDate

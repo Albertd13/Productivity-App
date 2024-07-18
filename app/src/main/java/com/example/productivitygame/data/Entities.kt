@@ -1,11 +1,13 @@
 package com.example.productivitygame.data
 
+import android.content.ContentValues
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
+import com.example.productivitygame.ui.utils.RECURRING_CAT_TABLE
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.Instant
@@ -48,7 +50,7 @@ data class Task(
 )
 
 @Entity(
-    tableName = "RecurringCats",
+    tableName = RECURRING_CAT_TABLE,
     //indices = [Index(value = ["type", "interval", "daysOfWeek"], unique = true)]
 )
 data class RecurringCategory (
@@ -60,6 +62,7 @@ data class RecurringCategory (
     // only non-null for RecurringType.Weekly
     val daysOfWeek: Set<DayOfWeek>?
 )
+
 
 data class TaskReward(
     val xpGain: Int? = null,
@@ -79,3 +82,24 @@ data class TaskAndRecurringCat(
     )
     val recurringCategory: RecurringCategory
 )
+
+@Entity(tableName = "FocusPlan")
+data class FocusPlan(
+    @PrimaryKey
+    val name: String,
+    val workDurationInMillis: Long,
+    val shortBreakDurationInMillis: Long,
+    val longBreakDurationInMillis: Long?,
+    val cycles: Int?
+) {
+    fun toContentValues(): ContentValues {
+        val contentValues = ContentValues()
+        contentValues.put("name", name)
+        contentValues.put("workDurationInMillis", workDurationInMillis)
+        contentValues.put("shortBreakDurationInMillis", shortBreakDurationInMillis)
+        contentValues.put("longBreakDurationInMillis", longBreakDurationInMillis)
+        contentValues.put("cycles", cycles)
+
+        return contentValues
+    }
+}

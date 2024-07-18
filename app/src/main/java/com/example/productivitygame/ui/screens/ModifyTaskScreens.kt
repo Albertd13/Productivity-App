@@ -77,7 +77,7 @@ import java.util.Locale
 object AddTaskDestination : NavigationDestination {
     override val route = "add_task"
     override val titleRes = R.string.add_task_title
-    val selectedDateInUTCMillisArg = "selected_date"
+    const val selectedDateInUTCMillisArg = "selected_date"
     val routeWithArgs = "$route?$selectedDateInUTCMillisArg={$selectedDateInUTCMillisArg}"
 }
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,7 +85,6 @@ object AddTaskDestination : NavigationDestination {
 fun AddTaskScreen(
     navigateBack: () -> Unit,
     modifier: Modifier = Modifier,
-    productive: Boolean = true,
     viewModel: AddTaskViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -111,7 +110,7 @@ fun AddTaskScreen(
 object EditTaskDestination : NavigationDestination {
     override val route = "edit_task"
     override val titleRes = R.string.edit_task_title
-    val taskIdArg = "taskId"
+    const val taskIdArg = "taskId"
     val routeWithArgs = "$route/{$taskIdArg}"
 }
 @OptIn(ExperimentalMaterial3Api::class)
@@ -119,7 +118,6 @@ object EditTaskDestination : NavigationDestination {
 fun EditTaskScreen(
     navigateBack: () -> Unit,
     modifier: Modifier = Modifier,
-    productive: Boolean = true,
     viewModel: EditTaskViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val coroutineScope = rememberCoroutineScope()

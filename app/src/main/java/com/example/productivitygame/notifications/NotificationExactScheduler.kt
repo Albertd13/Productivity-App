@@ -39,7 +39,7 @@ class NotificationExactScheduler(
             return
         }
         createNotificationChannel(notificationManager)
-        val intent = Intent(context, Notification::class.java).apply {
+        val intent = Intent(context, ScheduledNotificationReceiver::class.java).apply {
             putExtra(titleExtra, taskAlarmItem.taskName)
             putExtra(messageExtra, taskAlarmItem.notificationDesc)
         }
@@ -70,7 +70,7 @@ class NotificationExactScheduler(
                 PendingIntent.getBroadcast(
                     context,
                     it,
-                    Intent(context, Notification::class.java),
+                    Intent(context, ScheduledNotificationReceiver::class.java),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
             )

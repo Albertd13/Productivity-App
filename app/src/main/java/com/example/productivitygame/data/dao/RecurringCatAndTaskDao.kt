@@ -1,4 +1,4 @@
-package com.example.productivitygame.data
+package com.example.productivitygame.data.dao
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -7,6 +7,10 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import com.example.productivitygame.data.RecurringCategory
+import com.example.productivitygame.data.RecurringType
+import com.example.productivitygame.data.Task
+import com.example.productivitygame.data.TaskAndRecurringCat
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek

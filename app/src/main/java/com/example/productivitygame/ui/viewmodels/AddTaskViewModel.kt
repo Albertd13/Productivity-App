@@ -7,7 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import com.example.productivitygame.data.RecurringCatAndTaskDao
+import com.example.productivitygame.data.dao.RecurringCatAndTaskDao
 import com.example.productivitygame.data.RecurringType
 import com.example.productivitygame.data.TaskDifficulty
 import com.example.productivitygame.notifications.NotificationExactScheduler

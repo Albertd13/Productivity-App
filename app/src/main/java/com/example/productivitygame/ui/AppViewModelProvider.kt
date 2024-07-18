@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.productivitygame.ProductivityGameApplication
 import com.example.productivitygame.ui.viewmodels.AddTaskViewModel
 import com.example.productivitygame.ui.viewmodels.EditTaskViewModel
+import com.example.productivitygame.ui.viewmodels.FocusPlanViewModel
 import com.example.productivitygame.ui.viewmodels.ScheduleViewModel
 import com.example.productivitygame.ui.viewmodels.TimerViewModel
 
@@ -36,7 +37,14 @@ object AppViewModelProvider {
             )
         }
         initializer {
-            TimerViewModel()
+            TimerViewModel(
+                timerServiceManager = application().container.foreGroundServiceManager,
+                focusPlanDao = application().container.focusPlanDao,
+                savedStateHandle = this.createSavedStateHandle()
+            )
+        }
+        initializer {
+            FocusPlanViewModel(application().container.focusPlanDao)
         }
     }
 }

@@ -25,6 +25,8 @@ sealed class Screen(val route: String, @StringRes val labelResId: Int, @Drawable
     data object Schedule:
         Screen(ScheduleDestination.route, R.string.schedule_nav_label, R.drawable.calendar_icon)
     data object Timer:
+        // Note default route is set to pomodoro timer
+        // TODO: allow for setting of defaults in settings
         Screen(TimerDestination.route, R.string.timer_nav_label, R.drawable.clock_icon)
 }
 

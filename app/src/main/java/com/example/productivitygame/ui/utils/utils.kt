@@ -8,23 +8,11 @@ import com.example.productivitygame.ui.screens.WorkSegment
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.todayIn
-import java.util.Locale
-import kotlin.time.Duration
 
 // Gives the epoch Millis to LocalDate in UTC
 fun getCurrentDate(zone: TimeZone = TimeZone.currentSystemDefault()): LocalDate =
     Clock.System.todayIn(zone)
-
-fun Duration.format(format: String): String {
-    return String.format(Locale.getDefault(), format, inWholeHours, inWholeMinutes % 60, inWholeSeconds % 60)
-}
-
-// epoch millis to UTC date
-fun <EpochMillis: Long>EpochMillis.toUtcDate(): LocalDate = LocalDate.fromEpochDays((this / 86400000).toInt())
-fun LocalDate.toEpochMillis(zone: TimeZone = TimeZone.currentSystemDefault()) =
-    this.atStartOfDayIn(zone).toEpochMilliseconds()
 
 fun getColorStops(focusSequence: List<CountdownItem>): Array<Pair<Float, Color>> {
     val totalTimeInMillis = focusSequence.sumOf { it.duration.inWholeMilliseconds }

@@ -5,15 +5,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import com.example.productivitygame.data.FocusPlan
-import com.example.productivitygame.ui.screens.CountdownItem
+import androidx.lifecycle.viewModelScope
+import com.example.productivitygame.data.FocusPlanDetails
+import com.example.productivitygame.data.dao.FocusPlanDao
+import com.example.productivitygame.data.toFocusPlanDetails
+import com.example.productivitygame.foreground.TimerServiceManager
+import com.example.productivitygame.ui.TimerContainer
+import com.example.productivitygame.ui.screens.TimerDestination
 import com.example.productivitygame.ui.utils.POMODORO
-import com.example.productivitygame.ui.screens.WorkSegment
 import com.example.productivitygame.ui.utils.generateFocusSequence
 import com.example.productivitygame.ui.utils.getColorStops
+import kotlinx.coroutines.launch
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
 
 class MyCountDownTimer(
     millisInFuture: Long,
@@ -29,83 +34,67 @@ class MyCountDownTimer(
         onFinishCallback()
     }
 }
-class TimerViewModel: ViewModel() {
 
-    var timerUiState by mutableStateOf( TimerUiState() )
+class TimerViewModel(
+    private val timerServiceManager: TimerServiceManager,
+    private val focusPlanDao: FocusPlanDao,
+    savedStateHandle: SavedStateHandle
+): ViewModel() {
+
+    // Default is POMODORO name for now
+    private val focusPlanName: String =
+        savedStateHandle[TimerDestination.focusPlanNameArg] ?: POMODORO.name
+    var selectedFocusPlanDetails: FocusPlanDetails by mutableStateOf(POMODORO)
         private set
-
-    private var currentSegmentTimer: MyCountDownTimer? = null
-
-    private lateinit var focusPlanSequence: MutableList<CountdownItem>
-
-    var focusPlanSequenceTotalTimeMillis: Long = 0
-
     var colorStops: Array<Pair<Float, Color>> = arrayOf(0f to Color.Transparent, 1.0f to Color.Transparent)
+    var timeSelectedState = TimeSelectorState()
+        private set
+    fun updateTimeSelectedState(timeSelectorState: TimeSelectorState) {
+        timeSelectedState = timeSelectorState
+    }
+    init {
+        viewModelScope.launch {
+            val focusPlan = focusPlanDao.getFocusPlan(focusPlanName)
+            if (focusPlan != null)
+                selectedFocusPlanDetails = focusPlan.toFocusPlanDetails()
+        }
+        if (TimerContainer.isTimerInitialised && TimerContainer.focusPlanSequence.isNotEmpty()) {
+            colorStops = getColorStops(TimerContainer.focusPlanSequence)
+        }
+    }
+
     fun initialiseTimer(totalWorkTime: Duration) {
-        updateUiState(uiState = timerUiState.copy(isTimerInitialised = true))
-        focusPlanSequence = timerUiState.focusPlan.generateFocusSequence(totalWorkTime).toMutableList()
+        val focusPlanSequence = selectedFocusPlanDetails.generateFocusSequence(totalWorkTime)
+
+        TimerContainer.setFocusPlanAndSequence(
+            newFocusPlan = selectedFocusPlanDetails,
+            newFocusPlanSequence = focusPlanSequence
+        )
         colorStops = getColorStops(focusPlanSequence)
-        focusPlanSequenceTotalTimeMillis = focusPlanSequence
-            .sumOf { it.duration.inWholeMilliseconds }
-        updateUiState(uiState = timerUiState.copy(
-            totalDurationLeftMillis = focusPlanSequenceTotalTimeMillis)
-        )
-        setNextSegmentTimer()
+        TimerContainer.startNextSegment()
+        timerServiceManager.initTimerService()
     }
+
     fun deleteTimer() {
-        updateUiState(uiState = timerUiState.copy(isTimerInitialised = false))
-        currentSegmentTimer?.cancel()
-        currentSegmentTimer = null
+        TimerContainer.deleteTimer()
+        timerServiceManager.cancelTimerService()
     }
-    private fun setNextSegmentTimer() {
-        if (focusPlanSequence.size == 0) return
-        val countdownItem: CountdownItem = focusPlanSequence.removeAt(0)
-        //Log.d("TIMER", "$countdownItem")
-        currentSegmentTimer = getCountdownTimer(countdownItem.duration.inWholeMilliseconds)
-    }
-    private fun getCountdownTimer(millisInFuture: Long) =
-        MyCountDownTimer(
-            millisInFuture = millisInFuture,
-            countDownInterval = 1000,
-            onTickCallback = {
-                if (it / 1000 != timerUiState.segmentDurationLeftMillis / 1000)
-                updateUiState(
-                    timerUiState.copy(
-                        segmentDurationLeftMillis = it,
-                        totalDurationLeftMillis = timerUiState.totalDurationLeftMillis - 1000)
-                )
-            },
-            onFinishCallback = { }
-        )
+
     fun startNextSegment() {
-        setNextSegmentTimer()
-        startTimer()
+        TimerContainer.startNextSegment()
     }
     fun pauseTimer() {
-        currentSegmentTimer?.cancel()
-        updateUiState(timerUiState.copy(isTimerRunning = false))
+        TimerContainer.pauseTimer()
     }
 
     fun resumeTimer() {
-        currentSegmentTimer = getCountdownTimer(timerUiState.segmentDurationLeftMillis)
-        startTimer()
-    }
-
-    fun startTimer() {
-        currentSegmentTimer?.start()
-        updateUiState(timerUiState.copy(isTimerRunning = true))
-    }
-
-    fun updateUiState(uiState: TimerUiState) {
-        timerUiState = uiState
+        TimerContainer.resumeTimer()
     }
 }
 
-data class TimerUiState(
-    val isTimerRunning: Boolean = false,
-    val isTimerInitialised: Boolean = false,
-    val segmentDurationLeftMillis: Long = 0,
-    val totalDurationLeftMillis: Long = 0,
-    val focusPlan: FocusPlan = POMODORO,
-    val countdownItem: CountdownItem = WorkSegment(0.minutes)
+data class TimeSelectorState(
+    val hoursSelected: Int = 0,
+    val minutesSelected: Int = 0,
+    val secondsSelected: Int = 0
+
 )

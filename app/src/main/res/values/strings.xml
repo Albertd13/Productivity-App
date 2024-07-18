@@ -7,12 +7,9 @@
     <string name="calendar_icon_desc">Calendar Date Selector</string>
     <string name="date_select">Date</string>
     <string name="start_date_select">Start Date</string>
-    <string name="select_date">Select Date</string>
     <string name="time_select">Time (optional)</string>
     <string name="time_picker_button">Clock Time Selector</string>
-    <string name="time_format">hh:mm a</string>
     <string name="daily_type">Daily</string>
-    <string name="custom_type">Custom</string>
     <string name="monthly_type">Monthly</string>
     <string name="weekly_type">Weekly</string>
     <string name="notifications_enabled">Notifications Enabled</string>
@@ -32,4 +29,7 @@
     <string name="resume_button">Resume</string>
     <string name="next_section">Next</string>
     <string name="focus_timer_title">Focus Timer</string>
+    <string name="focus_plan_selection_title">Select a Focus Plan</string>
+    <string name="add_focus_plan">Add Focus Plan</string>
+    <string name="new_focus_plan_title">Create A New Plan!</string>
 </resources>
