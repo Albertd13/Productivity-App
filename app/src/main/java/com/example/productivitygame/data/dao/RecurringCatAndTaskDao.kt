@@ -53,7 +53,7 @@ interface RecurringCatAndTaskDao {
     @Query("SELECT * FROM TaskList WHERE rowid IN (:rowIdList)")
     suspend fun getTasksFromRowIds(rowIdList: List<Long>): List<Task>
     /**
-     * Returns a list of taskIds of the deleted tasks
+     Returns a list of taskIds of the deleted tasks
      */
     @Transaction
     suspend fun deleteTasksByCatIdAndName(recurringCatId: Int, taskName: String): List<Int> {
@@ -86,7 +86,7 @@ interface RecurringCatAndTaskDao {
         return insert(tasksToInsert.map { it.copy(recurringCatId = recurringCatId) })
     }
 
-    @Transaction
+    // to query specific dates just need to provide day start instant and day end instant
     @Query("SELECT * FROM TaskList WHERE " +
             "datetimeInstant >= :instantStart AND " +
             "datetimeInstant < :instantEnd AND " +
@@ -96,8 +96,10 @@ interface RecurringCatAndTaskDao {
         instantEnd: Instant,
         hasTime: Boolean
     ): Flow<List<TaskAndRecurringCat>>
-    //to query specific dates just need to provide day start instant and day end instant
-    @Transaction
+
+    @Query("SELECT dateTimeInstant FROM TaskList WHERE isDeadline = 1")
+    fun getAllDatesWIthDeadlines(): Flow<List<Instant>>
+
     @Query("SELECT * FROM TaskList WHERE id = :taskId")
     suspend fun getTaskWithId(taskId: Int): TaskAndRecurringCat
 }

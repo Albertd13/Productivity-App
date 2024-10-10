@@ -1,4 +1,4 @@
-package com.example.productivitygame.ui.viewmodels
+package com.example.productivitygame.ui.viewmodels.modify_task_models
 
 import android.util.Log
 import androidx.compose.material3.DatePickerState
@@ -7,13 +7,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.productivitygame.data.dao.RecurringCatAndTaskDao
 import com.example.productivitygame.data.RecurringType
 import com.example.productivitygame.notifications.NotificationExactScheduler
-import com.example.productivitygame.ui.TaskSelectableDates
 import com.example.productivitygame.ui.screens.EditTaskDestination
+import com.example.productivitygame.ui.utils.Result
 import com.example.productivitygame.ui.utils.getCurrentDate
 import com.example.productivitygame.ui.utils.getRecurringCat
 import com.example.productivitygame.ui.utils.toEpochMillis
@@ -30,10 +29,9 @@ class EditTaskViewModel(
     private val recurringCatAndTaskDao: RecurringCatAndTaskDao,
     private val notificationExactScheduler: NotificationExactScheduler,
     savedStateHandle: SavedStateHandle
-): ViewModel() {
+): ModifyTaskViewModel() {
     private val taskId: Int = checkNotNull(savedStateHandle[EditTaskDestination.taskIdArg])
-    var taskUiState by mutableStateOf(TaskUiState())
-        private set
+    override var taskUiState by mutableStateOf(TaskUiState())
     private var originalTaskDetails: TaskDetails = TaskDetails()
     init {
         viewModelScope.launch {
@@ -42,43 +40,16 @@ class EditTaskViewModel(
         originalTaskDetails = taskUiState.taskDetails.copy()
     }
     @OptIn(ExperimentalMaterial3Api::class)
-    var datePickerState by mutableStateOf(
-        DatePickerState(
+    override var datePickerState by mutableStateOf(DatePickerState(
         yearRange = 2024..2025,
         locale = Locale.getDefault(),
         initialSelectedDateMillis = getCurrentDate().toEpochMillis(TimeZone.UTC),
         selectableDates = getCurrentSelectableDates()
-    )
-    )
-    fun getCurrentSelectableDates() = TaskSelectableDates(
-        todayDateUtcMillis = getCurrentDate().toEpochMillis(TimeZone.UTC),
-        isTypeWeekly = taskUiState.taskDetails.recurringType?.let { it::class } == RecurringType.Weekly::class,
-        daysOfWeek = taskUiState.taskDetails.selectedDays
-    )
-
-    fun updateUiState(taskDetails: TaskDetails) {
-        taskUiState =
-            TaskUiState(taskDetails = taskDetails, isEntryValid = validateInput())
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    fun updateDatePickerState(newDatePickerState: DatePickerState) {
-        datePickerState = newDatePickerState
-    }
-
-    // validates input before allowing saving to database
-    private fun validateInput(taskDetails: TaskDetails = taskUiState.taskDetails): Boolean =
-        with(taskDetails) {
-            name.isNotBlank() and (date != null) and
-            (
-                (recurringType?.let { it::class } != RecurringType.Weekly::class) or
-                (selectedDays.contains(date!!.dayOfWeek))
-            )
-        }
+    ))
 
     //for Weekly Recurring types, save a separate task for each selected day, with date modified to fit day
     private suspend fun saveNewTasks() {
-        if (validateInput()) {
+        if (validateInput() is Result.Success) {
             with(taskUiState.taskDetails){
                 val taskList =
                     if (recurringType?.let { it::class } == RecurringType.Weekly::class) {
@@ -123,3 +94,4 @@ class EditTaskViewModel(
         }
     }
 }
+

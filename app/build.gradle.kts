@@ -50,10 +50,11 @@ android {
         }
     }
 }
-
 dependencies {
-    implementation("androidx.media:media:1.6.0")
+    implementation(libs.androidx.media)
     implementation(kotlin("reflect"))
+    implementation(libs.androidx.fragment.ktx)
+    implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -67,9 +68,9 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.kotlinx.datetime)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
-    ksp("androidx.room:room-compiler:${rootProject.extra["room_version"]}")
+    ksp(libs.room.compiler)
     implementation(libs.androidx.room.ktx)
-    implementation("com.kizitonwose.calendar:compose:2.5.1")
+    implementation(libs.compose.kizitonwose.calendar)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

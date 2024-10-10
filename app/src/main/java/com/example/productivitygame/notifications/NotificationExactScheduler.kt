@@ -2,7 +2,6 @@ package com.example.productivitygame.notifications
 
 import android.Manifest
 import android.app.AlarmManager
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
@@ -15,9 +14,7 @@ import com.example.productivitygame.ProductivityGameApplication
 import com.example.productivitygame.data.Task
 import com.example.productivitygame.ui.utils.getAlarmItem
 
-class NotificationExactScheduler(
-    private val context: Context
-) {
+class NotificationExactScheduler(private val context: Context): NotificationHandler(context) {
     private val alarmManager: AlarmManager = context.getSystemService(AlarmManager::class.java)
 
     fun scheduleNotification(taskAlarmItem: TaskAlarmItem) {
@@ -27,8 +24,7 @@ class NotificationExactScheduler(
             return
         }
         val app = context as ProductivityGameApplication
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (!notificationManager.areNotificationsEnabled()) {
+        if (notificationManager?.areNotificationsEnabled() != true) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 ActivityCompat.requestPermissions(
                     app.currentActivity,
@@ -38,7 +34,13 @@ class NotificationExactScheduler(
             }
             return
         }
-        createNotificationChannel(notificationManager)
+        createNotificationChannel(
+            channelID,
+            channelName,
+            channelDesc,
+            NotificationManager.IMPORTANCE_HIGH
+        )
+
         val intent = Intent(context, ScheduledNotificationReceiver::class.java).apply {
             putExtra(titleExtra, taskAlarmItem.taskName)
             putExtra(messageExtra, taskAlarmItem.notificationDesc)
@@ -77,21 +79,10 @@ class NotificationExactScheduler(
         }
 
     }
-    //TODO: Might make this fun (and its constituents suspend functions down the line)
+    //Might make this func and its constituents suspend functions down the line
     fun updateNotifications(task: Task) {
         if (task.notificationsEnabled)
             scheduleNotification(task.getAlarmItem())
         else cancelNotifications(listOf(task.id))
-    }
-    private fun createNotificationChannel(notificationManager: NotificationManager){
-        val importance = NotificationManager.IMPORTANCE_HIGH
-        val channel = NotificationChannel(
-            channelID,
-            channelName,
-            importance
-        )
-        channel.description = channelDesc
-        notificationManager.createNotificationChannel(channel)
-
     }
 }

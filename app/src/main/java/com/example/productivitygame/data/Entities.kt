@@ -41,6 +41,8 @@ data class Task(
 
     val hasTime: Boolean,
 
+    val isDeadline: Boolean,
+
     val durationInMillis: Int,
 
     @Embedded
@@ -93,13 +95,13 @@ data class FocusPlan(
     val cycles: Int?
 ) {
     fun toContentValues(): ContentValues {
-        val contentValues = ContentValues()
-        contentValues.put("name", name)
-        contentValues.put("workDurationInMillis", workDurationInMillis)
-        contentValues.put("shortBreakDurationInMillis", shortBreakDurationInMillis)
-        contentValues.put("longBreakDurationInMillis", longBreakDurationInMillis)
-        contentValues.put("cycles", cycles)
-
+        val contentValues = ContentValues().apply {
+            put("name", name)
+            put("workDurationInMillis", workDurationInMillis)
+            put("shortBreakDurationInMillis", shortBreakDurationInMillis)
+            put("longBreakDurationInMillis", longBreakDurationInMillis)
+            put("cycles", cycles)
+        }
         return contentValues
     }
 }

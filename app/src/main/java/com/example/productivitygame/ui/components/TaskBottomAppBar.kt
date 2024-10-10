@@ -27,7 +27,7 @@ sealed class Screen(val route: String, @StringRes val labelResId: Int, @Drawable
     data object Timer:
         // Note default route is set to pomodoro timer
         // TODO: allow for setting of defaults in settings
-        Screen(TimerDestination.route, R.string.timer_nav_label, R.drawable.clock_icon)
+        Screen(TimerDestination.routeWithArgs, R.string.timer_nav_label, R.drawable.clock_icon)
 }
 
 val items = listOf(

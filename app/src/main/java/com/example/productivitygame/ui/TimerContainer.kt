@@ -45,9 +45,10 @@ object TimerContainer {
     private var onSegmentMillisChanged: ((Long) -> Unit)? = null
     // true represents timer running, false represents timer paused
     private var onTimerStateChanged: ((TimerState) -> Unit)? = null
+    private var onNewCountdownItem: ((CountdownItem) -> Unit)? = null
+    private var onSegmentTimerFinished: ((CountdownItem) -> Unit)? = null
     // Called whenever final timer in sequence is completed
     private var onFinalTimerFinished: (() -> Unit)? = null
-    private var onNewCountdownItem: ((CountdownItem) -> Unit)? = null
 
 
     var segmentDurationLeftMillis by mutableLongStateOf(0)
@@ -66,9 +67,7 @@ object TimerContainer {
 
     private fun setNextSegmentTimer() {
         if (focusPlanSequenceIndex >= focusPlanSequence.size - 1) return
-        if (getCurrentItem() is WorkSegment) {
-            workCompletionProgress = workCompletionProgress.first + 1 to workCompletionProgress.second
-        }
+
         val currentCountdownItem = focusPlanSequence[++focusPlanSequenceIndex]
         //Log.d("TIMER", "$countdownItem")
         Log.d("CALLBACK", "${onNewCountdownItem != null}")
@@ -80,8 +79,9 @@ object TimerContainer {
         focusPlanSequence = newFocusPlanSequence
         focusPlanSequenceTotalTimeMillis = focusPlanSequence
             .sumOf { it.duration.inWholeMilliseconds }
-        segmentDurationLeftMillis = 0
+        segmentDurationLeftMillis = focusPlanSequence[0].duration.inWholeMilliseconds
         totalDurationLeftMillis = focusPlanSequenceTotalTimeMillis
+        Log.d("TIMER", "$totalDurationLeftMillis")
         workCompletionProgress = 0 to focusPlanSequence.count { it is WorkSegment }
     }
     private fun getCurrentItem() = if (focusPlanSequenceIndex == -1) null else focusPlanSequence[focusPlanSequenceIndex]
@@ -96,7 +96,9 @@ object TimerContainer {
     fun setOnTimerRunStateChangedListener(listener: (TimerState) -> Unit) {
         onTimerStateChanged = listener
     }
-
+    fun setOnSegmentTimerFinishedListener(listener: (CountdownItem) -> Unit) {
+        onSegmentTimerFinished = listener
+    }
     fun setOnTimerFinishedListener(listener: () -> Unit) {
         onFinalTimerFinished = listener
     }
@@ -129,6 +131,8 @@ object TimerContainer {
         isTimerInitialised = true
         startTimer()
     }
+    // Note: segmentDurationLeftMillis must already be set to the correct value,
+    // or totalDurationLeftMillis will be increased by the duration of the segment
     private fun getCountdownTimer(millisInFuture: Long) =
         MyCountDownTimer(
             millisInFuture = millisInFuture,
@@ -142,7 +146,16 @@ object TimerContainer {
             },
             // different callback for last timer to trigger notification
             onFinishCallback = if (focusPlanSequenceIndex < focusPlanSequence.size - 1) {
-                { timerState = TimerState.SEGMENT_ENDED }
+                {
+                    timerState = TimerState.SEGMENT_ENDED
+                    if (getCurrentItem() is WorkSegment) {
+                        workCompletionProgress = workCompletionProgress.first + 1 to workCompletionProgress.second
+                    }
+                    val currentItem = getCurrentItem()
+                    if (currentItem != null) {
+                        onSegmentTimerFinished?.invoke(currentItem)
+                    }
+                }
             } else {
                 {
                     onFinalTimerFinished?.invoke()

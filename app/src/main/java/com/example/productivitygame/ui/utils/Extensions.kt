@@ -11,8 +11,8 @@ import com.example.productivitygame.ui.screens.CountdownItem
 import com.example.productivitygame.ui.screens.LongBreak
 import com.example.productivitygame.ui.screens.ShortBreak
 import com.example.productivitygame.ui.screens.WorkSegment
-import com.example.productivitygame.ui.viewmodels.TaskDetails
-import com.example.productivitygame.ui.viewmodels.TaskUiState
+import com.example.productivitygame.ui.viewmodels.modify_task_models.TaskDetails
+import com.example.productivitygame.ui.viewmodels.modify_task_models.TaskUiState
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
@@ -48,7 +48,8 @@ fun TaskDetails.toTask(): Task = Task(
     durationInMillis = durationInMillis,
     difficulty = null,
     //TODO: calculate rewards based on info above
-    reward = TaskReward()
+    reward = TaskReward(),
+    isDeadline = isDeadline
 )
 
 fun TaskDetails.getRecurringCat(): RecurringCategory =
@@ -66,6 +67,7 @@ fun TaskAndRecurringCat.toTaskDetails(): TaskDetails {
         recurringCatId = recurringCategory.id,
         name = task.name,
         notes = task.notes,
+        isDeadline = task.isDeadline,
         recurringType = recurringCategory.type,
         productive = task.productive,
         notificationsEnabled = task.notificationsEnabled,

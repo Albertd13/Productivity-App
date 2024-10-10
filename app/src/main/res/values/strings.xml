@@ -32,4 +32,6 @@
     <string name="focus_plan_selection_title">Select a Focus Plan</string>
     <string name="add_focus_plan">Add Focus Plan</string>
     <string name="new_focus_plan_title">Create A New Plan!</string>
+    <string name="new_focus_plan_add">Add Focus Plan</string>
+    <string name="discard_plan_button">Discard</string>
 </resources>

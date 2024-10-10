@@ -2,7 +2,6 @@ package com.example.productivitygame.foreground
 
 import android.annotation.SuppressLint
 import android.app.Notification
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.PendingIntent.FLAG_IMMUTABLE
@@ -21,6 +20,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.example.productivitygame.MainActivity
 import com.example.productivitygame.R
+import com.example.productivitygame.notifications.NotificationHandler
 import com.example.productivitygame.ui.TimerContainer
 import com.example.productivitygame.ui.TimerState
 import com.example.productivitygame.ui.screens.CountdownItem
@@ -32,12 +32,11 @@ import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
 
-const val timerChannelId = "CHANNEL_TWO"
+const val timerChannelId = "CHANNEL_THREE"
 // Can be fixed since there should only be one timer running
 const val foregroundNotificationId = 100
 const val timerChannelName = "Timer Tracking"
 const val timerChannelDesc = "Visual indicator of background stopwatch"
-
 
 
 class TimerService: Service() {
@@ -62,6 +61,7 @@ class TimerService: Service() {
         TimerContainer.setOnSegmentMillisChangedListener(::updateNotificationTime)
         TimerContainer.setOnTimerRunStateChangedListener(::updateNotificationState)
         TimerContainer.setOnTimerFinishedListener(::onTimerSessionCompleted)
+        TimerContainer.setOnSegmentTimerFinishedListener(::updateSegmentEnded)
         TimerContainer.setOnNewCountdownItemListener(::updateContentTitle)
         notificationManager = ContextCompat.getSystemService(this, NotificationManager::class.java)
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
@@ -93,6 +93,7 @@ class TimerService: Service() {
             // TODO: SubText should be the name of task being completed
             //.setSubText("Testing")
             .setOngoing(true)
+            .setSilent(true)
             .setContentIntent(deepLinkPendingIntent)
             .addAction(pauseAction)
             .setStyle(mediaStyle)
@@ -184,8 +185,18 @@ class TimerService: Service() {
             val workProgress = "($first/$second work completed!)"
             contentTitle = "$segmentName $workProgress"
         }
-
-
+    }
+    private fun updateSegmentEnded(endedCountdownItem: CountdownItem) {
+        val segmentName = if (endedCountdownItem is WorkSegment) "Work" else "Break Time"
+        notificationManager?.notify(
+            foregroundNotificationId,
+            NotificationCompat.Builder(this, timerChannelId)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setContentTitle("$segmentName Ended")
+                .setContentIntent(openAppPendingIntent)
+                .setContentText("Click on the arrow to continue!")
+                .build()
+        )
     }
 
     private fun updateNotificationState(timerState: TimerState) {
@@ -204,27 +215,22 @@ class TimerService: Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-
         startForeground()
         return START_STICKY
     }
 }
 
-class TimerServiceManager(private val context: Context) {
+class TimerServiceManager(private val context: Context): NotificationHandler(context) {
     init {
-        val notificationManager = ContextCompat.getSystemService(context, NotificationManager::class.java)
-        createNotificationChannel(notificationManager!!)
-    }
-    private fun createNotificationChannel(notificationManager: NotificationManager){
-        val channel = NotificationChannel(
+        createNotificationChannel(
             timerChannelId,
             timerChannelName,
-            NotificationManager.IMPORTANCE_DEFAULT
+            timerChannelDesc,
+            NotificationManager.IMPORTANCE_DEFAULT,
+            vibrationEnabled = true
         )
-        channel.description = timerChannelDesc
-        notificationManager.createNotificationChannel(channel)
-
     }
+
     fun initTimerService() {
         val intent = Intent(context, TimerService::class.java)
         context.startForegroundService(intent)

@@ -6,8 +6,8 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.productivitygame.ProductivityGameApplication
-import com.example.productivitygame.ui.viewmodels.AddTaskViewModel
-import com.example.productivitygame.ui.viewmodels.EditTaskViewModel
+import com.example.productivitygame.ui.viewmodels.modify_task_models.AddTaskViewModel
+import com.example.productivitygame.ui.viewmodels.modify_task_models.EditTaskViewModel
 import com.example.productivitygame.ui.viewmodels.FocusPlanViewModel
 import com.example.productivitygame.ui.viewmodels.ScheduleViewModel
 import com.example.productivitygame.ui.viewmodels.TimerViewModel

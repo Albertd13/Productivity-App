@@ -91,13 +91,13 @@ val defaultFocusPlans: List<FocusPlan> = listOf(
         workDurationInMillis = 50.minutes.inWholeMilliseconds,
         shortBreakDurationInMillis = 20.minutes.inWholeMilliseconds,
         longBreakDurationInMillis = null,
-        cycles = null
+        cycles = null,
     )
 )
 
 @Database(
     entities = [Task::class, RecurringCategory::class, FocusPlan::class],
-    version = 17,
+    version = 18,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

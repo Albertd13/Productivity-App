@@ -18,8 +18,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -69,7 +71,7 @@ import com.example.productivitygame.ui.utils.toEpochMillis
 import com.example.productivitygame.ui.utils.toUtcDate
 import com.example.productivitygame.ui.viewmodels.ScheduleTaskState
 import com.example.productivitygame.ui.viewmodels.ScheduleViewModel
-import com.example.productivitygame.ui.viewmodels.TaskDetails
+import com.example.productivitygame.ui.viewmodels.modify_task_models.TaskDetails
 import com.kizitonwose.calendar.compose.WeekCalendar
 import com.kizitonwose.calendar.compose.weekcalendar.rememberWeekCalendarState
 import com.kizitonwose.calendar.core.atStartOfMonth
@@ -121,12 +123,16 @@ fun ViewScheduleScreen(
         hasTime = false
     ).collectAsState()
 
+    val deadlineDates by viewModel.getAllDatesWithDeadlines().collectAsState()
+
     Scaffold(
         floatingActionButton = {
                 FloatingActionButton(
                     onClick = { navigateToNewTask(scheduleUiState.dateSelected) },
                     shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.padding(20.dp)
+                    modifier = Modifier.padding(20.dp),
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
@@ -157,6 +163,7 @@ fun ViewScheduleScreen(
                             scheduleUiState.copy(dateSelected = it)
                         )
                     },
+                    deadlineDates = deadlineDates
                 )
                 TaskBody(
                     onClearTaskSwipe = { swipeToDismissBoxValue, taskDetails ->
@@ -219,7 +226,7 @@ fun ViewScheduleTopAppBar(
         actions = {
             SimpleDateSelector(
                 onConfirmDate = onSelectCalendarDate,
-                selectedDate = selectedDate
+                selectedDate = selectedDate,
             )
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -237,7 +244,7 @@ fun SimpleDateSelector(
     var showDatePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = selectedDate.toEpochMillis(TimeZone.UTC),
-        yearRange = 2024..2025
+        yearRange = 2024..2025,
     )
     LaunchedEffect(key1 = selectedDate) {
         datePickerState.selectedDateMillis = selectedDate.toEpochMillis(TimeZone.UTC)
@@ -263,6 +270,9 @@ fun SimpleDateSelector(
                     }
                 ) { Text("OK") }
             },
+            colors = DatePickerDefaults.colors(
+                dayContentColor = MaterialTheme.colorScheme.error
+            ),
             dismissButton = {
                 TextButton(
                     onClick = { showDatePicker = false }
@@ -271,15 +281,18 @@ fun SimpleDateSelector(
             modifier = Modifier.fillMaxSize()
         )
         {
-            DatePicker(state = datePickerState)
+            DatePicker(
+                state = datePickerState
+            )
         }
     }
 }
 @Composable
 private fun WeekCalendarSegment(
+    modifier: Modifier = Modifier,
+    deadlineDates: Set<LocalDate> = emptySet(),
     dateSelected: LocalDate,
     onSelectDate: (dateSelected: LocalDate) -> Unit,
-    modifier: Modifier = Modifier
 ) {
     val currentDate = remember { getCurrentDate() }
     val currentMonth = remember { YearMonth.now() }
@@ -300,7 +313,8 @@ private fun WeekCalendarSegment(
             val date = it.date.toKotlinLocalDate()
             Day(
                 date = date,
-                isSelected = dateSelected == date,
+                isDeadline = date in deadlineDates,
+                isSelected = date == dateSelected,
                 onClick = { dayDate -> onSelectDate(dayDate) }
             )
         },
@@ -314,6 +328,7 @@ private val dayOfMonthFormat = LocalDate.Format {
 @Composable
 private fun Day(
     date: LocalDate,
+    isDeadline: Boolean = false,
     isSelected: Boolean,
     onClick: (dateOfDayClicked: LocalDate) -> Unit
 ) {
@@ -332,14 +347,13 @@ private fun Day(
             Text(
                 text = date.dayOfWeek.toString().substring(0..2),
                 fontSize = 12.sp,
-                color = Color.Black,
                 fontWeight = FontWeight.Light,
             )
             Text(
                 text = date.format(dayOfMonthFormat),
                 fontSize = 14.sp,
-                color = if (isSelected) Color.Green else Color.Black,
                 fontWeight = FontWeight.Bold,
+                color = if (isDeadline) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             )
         }
         if (isSelected) {
@@ -366,12 +380,14 @@ private fun TaskBody(
 ) {
     Column(modifier = modifier) {
         TaskList(
+            label = "Scheduled Tasks",
             taskList = timedTaskState.taskList,
             onClearTaskSwipe = onClearTaskSwipe,
             onToggleNotif = onToggleNotif,
             onClickTask = onClickTask,
         )
         TaskList(
+            label = "To-Do Tasks",
             taskList = todoTaskState.taskList,
             onClearTaskSwipe = onClearTaskSwipe,
             onToggleNotif = onToggleNotif,
@@ -384,21 +400,30 @@ private fun TaskBody(
 @Composable
 fun TaskList(
     modifier: Modifier = Modifier,
+    label: String = "",
     onToggleNotif: (TaskDetails) -> Unit = {},
     onClearTaskSwipe: (SwipeToDismissBoxValue, TaskDetails) -> Boolean,
     onClickTask: (Int) -> Unit,
     taskList: List<TaskDetails> = listOf(),
 ) {
-    LazyColumn(
-        modifier = modifier,
-    ) {
-        items(taskList) {
-            TaskCard(
-                onClearTaskSwipe = onClearTaskSwipe,
-                taskDetails = it,
-                onToggleNotif = onToggleNotif,
-                onClickTask = onClickTask
-            )
+    if (taskList.isNotEmpty()) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = label)
+            LazyColumn(
+                modifier = modifier,
+            ) {
+                items(taskList) {
+                    TaskCard(
+                        onClearTaskSwipe = onClearTaskSwipe,
+                        taskDetails = it,
+                        onToggleNotif = onToggleNotif,
+                        onClickTask = onClickTask
+                    )
+                }
+            }
         }
     }
 }
@@ -416,6 +441,12 @@ fun TaskCard(
 ) {
     var cardHeightDp by remember { mutableStateOf(0.dp) }
     var boxHeightDp by remember { mutableStateOf(0.dp) }
+    val cardColor = if(taskDetails.isDeadline)
+        MaterialTheme.colorScheme.errorContainer else
+            MaterialTheme.colorScheme.secondaryContainer
+    val cardContentColor = if(taskDetails.isDeadline)
+        MaterialTheme.colorScheme.onErrorContainer else
+            MaterialTheme.colorScheme.onSecondaryContainer
 
     val localDensity = LocalDensity.current
     val threshold: Float = with(LocalConfiguration.current) {
@@ -451,7 +482,13 @@ fun TaskCard(
                     .padding(vertical = 10.dp)
                     .onGloballyPositioned { coordinates ->
                         cardHeightDp = with(localDensity) { coordinates.size.height.toDp() }
-                    }
+                    },
+                colors = CardColors(
+                    containerColor = cardColor,
+                    contentColor = cardContentColor,
+                    disabledContainerColor = cardColor.copy(alpha = 0.5f),
+                    disabledContentColor = cardContentColor.copy(alpha = 0.5f),
+                ),
             ) {
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,

@@ -11,6 +11,7 @@ import com.example.productivitygame.ui.utils.getAlarmItem
 import com.example.productivitygame.ui.utils.getCurrentDate
 import com.example.productivitygame.ui.utils.toTask
 import com.example.productivitygame.ui.utils.toTaskDetails
+import com.example.productivitygame.ui.viewmodels.modify_task_models.TaskDetails
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -19,6 +20,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
 
 class ScheduleViewModel(
     private val recurringCatAndTaskDao: RecurringCatAndTaskDao,
@@ -30,6 +32,17 @@ class ScheduleViewModel(
     fun updateScheduleUiState(newScheduleUiState: ScheduleUiState) {
         scheduleUiState = newScheduleUiState
     }
+    fun getAllDatesWithDeadlines(): StateFlow<Set<LocalDate>> =
+        recurringCatAndTaskDao
+            .getAllDatesWIthDeadlines()
+            .map {
+                it.map { date -> date.toLocalDateTime(TimeZone.currentSystemDefault()).date }.toSet()
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(TIMEOUT_MILLIS),
+                initialValue = setOf()
+            )
     fun getTasksOnDate(
         startDate: LocalDate,
         endDate: LocalDate,

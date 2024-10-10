@@ -46,22 +46,23 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.productivitygame.R
 import com.example.productivitygame.data.RecurringType
 import com.example.productivitygame.navigation.NavigationDestination
 import com.example.productivitygame.ui.AppViewModelProvider
-import com.example.productivitygame.ui.TaskSelectableDates
 import com.example.productivitygame.ui.components.BetterTextField
 import com.example.productivitygame.ui.components.DefaultTopAppBar
 import com.example.productivitygame.ui.components.TimePickerDialog
 import com.example.productivitygame.ui.utils.getCurrentDate
 import com.example.productivitygame.ui.utils.toEpochMillis
 import com.example.productivitygame.ui.utils.toUtcDate
-import com.example.productivitygame.ui.viewmodels.AddTaskViewModel
-import com.example.productivitygame.ui.viewmodels.EditTaskViewModel
-import com.example.productivitygame.ui.viewmodels.TaskDetails
+import com.example.productivitygame.ui.viewmodels.modify_task_models.AddTaskViewModel
+import com.example.productivitygame.ui.viewmodels.modify_task_models.EditTaskViewModel
+import com.example.productivitygame.ui.viewmodels.modify_task_models.TaskDetails
+import com.example.productivitygame.ui.viewmodels.modify_task_models.TaskSelectableDates
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
@@ -134,7 +135,7 @@ fun EditTaskScreen(
             }
         },
         onOpenDatePickerDialog = { viewModel.updateDatePickerState(it) },
-        updateSelectableDates = { viewModel.getCurrentSelectableDates() },
+        updateSelectableDates = viewModel::getCurrentSelectableDates,
         isEntryValid = viewModel.taskUiState.isEntryValid,
         modifier = modifier
     )
@@ -213,6 +214,12 @@ fun SaveTaskForm(
                     checked = taskDetails.notificationsEnabled,
                     onCheckedChange = { onValueChange(taskDetails.copy(notificationsEnabled = it)) }
                 )
+                // Deadline Toggle
+                ToggleWithTextRow(
+                    text = "Set as Deadline",
+                    checked = taskDetails.isDeadline,
+                    onCheckedChange = { onValueChange(taskDetails.copy(isDeadline = it)) }
+                )
                 // Recurring Toggle
                 RecurringToggle(
                     recurringType = taskDetails.recurringType,
@@ -252,24 +259,27 @@ fun SaveTaskForm(
                         )
                     }
                 )
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Save Button
                     Button(
                         onClick = {
-                            onSavePressed()
-                            if (!isEntryValid) isInvalidInputPopupVisible = true
+                            if (isEntryValid) {
+                                onSavePressed()
+                            } else {
+                                isInvalidInputPopupVisible = true
+                            }
                         },
-                        enabled = isEntryValid
                     ) {
                         Text(text = stringResource(R.string.save_task))
                     }
+                    if (isInvalidInputPopupVisible) {
+                        Text(text = "Invalid Input", color = Color.Red)
+                    }
                 }
-            }
-            if (isInvalidInputPopupVisible) {
-                Text(text = "Invalid Input")
+
             }
         }
     }
@@ -616,3 +626,28 @@ fun AddTaskFormPreview() {
     }
 }
 */
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun SaveTaskFormPreview() {
+    SaveTaskForm(
+        topAppBarTitle = "Test Form",
+        taskDetails = TaskDetails(),
+        datePickerState = DatePickerState(
+            yearRange = 2024..2025,
+            locale = Locale.getDefault(),
+            initialSelectedDateMillis = getCurrentDate().toEpochMillis(TimeZone.UTC),
+        ),
+        onValueChange = {},
+        onSavePressed = {},
+        onOpenDatePickerDialog = {},
+        updateSelectableDates = {
+            TaskSelectableDates(
+                getCurrentDate().toEpochMillis(TimeZone.UTC),
+                true,
+                emptySet()
+            )
+        }
+    )
+}

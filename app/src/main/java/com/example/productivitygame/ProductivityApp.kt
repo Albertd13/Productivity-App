@@ -16,6 +16,9 @@ fun ProductivityApp(navController: NavHostController = rememberNavController()) 
             TaskBottomAppBar(navController = navController)
         }
     ) { innerPadding ->
-        InventoryNavHost(navController = navController, modifier = Modifier.padding(innerPadding))
+        InventoryNavHost(
+            navController = navController,
+            modifier = Modifier.padding(innerPadding)
+        )
     }
 }

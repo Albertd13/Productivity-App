@@ -10,6 +10,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -26,9 +27,9 @@ fun BetterTextField(
     singleLine: Boolean = false,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     visualTransformation: VisualTransformation = VisualTransformation.None,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default
-    ) {
-
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    textStyle: TextStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
+) {
     val interactionSource = remember { MutableInteractionSource() }
     BasicTextField(
         value = value,
@@ -39,7 +40,7 @@ fun BetterTextField(
         enabled = enabled,
         singleLine = singleLine,
         keyboardOptions = keyboardOptions,
-        textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
+        textStyle = textStyle
     ) { innerTextField ->
         TextFieldDefaults.DecorationBox(
             placeholder = placeholder,

@@ -7,10 +7,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -21,14 +21,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -40,7 +40,10 @@ import com.example.productivitygame.navigation.NavigationDestination
 import com.example.productivitygame.ui.AppViewModelProvider
 import com.example.productivitygame.ui.components.BetterTextField
 import com.example.productivitygame.ui.components.DefaultTopAppBar
+import com.example.productivitygame.ui.theme.ProductivityGameTheme
+import com.example.productivitygame.ui.utils.POMODORO
 import com.example.productivitygame.ui.viewmodels.FocusPlanViewModel
+import kotlinx.coroutines.launch
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -59,6 +62,7 @@ fun FocusPlanSelectionScreen(
     var isAddFocusPlanDialogVisible by rememberSaveable {
         mutableStateOf(false)
     }
+    val coroutineScope = rememberCoroutineScope()
     Scaffold(
         topBar = {
             DefaultTopAppBar(
@@ -87,34 +91,31 @@ fun FocusPlanSelectionScreen(
     }
     if (isAddFocusPlanDialogVisible) {
         AddFocusPlanDialog(
-            onDiscard = { /*TODO*/ },
-            isInputValid = {false },
-            onAdd = {}
+            focusPlanDetails = viewModel.newFocusPlanDetailsState.focusPlanDetails,
+            onDiscard = {
+                isAddFocusPlanDialogVisible = false
+                viewModel.resetNewFocusPlanState()
+            },
+            isEntryValid = viewModel.newFocusPlanDetailsState.isEntryValid,
+            onInputValueChange = { viewModel.updateNewFocusPlanState(it) },
+            onSave = {
+                coroutineScope.launch {
+                    viewModel.saveFocusPlan()
+                }
+                isAddFocusPlanDialogVisible = false
+            }
         )
     }
 }
 
 @Composable
 fun AddFocusPlanDialog(
+    focusPlanDetails: FocusPlanDetails,
     onDiscard: () -> Unit,
-    isInputValid: (FocusPlanDetails) -> Boolean,
-    onAdd: (focusPlanDetails: FocusPlanDetails) -> Unit
+    isEntryValid: Boolean,
+    onInputValueChange: (focusPlanDetails: FocusPlanDetails) -> Unit,
+    onSave: () -> Unit = {}
 ) {
-    var focusPlaneName by remember {
-        mutableStateOf("")
-    }
-    var workDuration by remember {
-        mutableStateOf(0.minutes)
-    }
-    var shortBreakDuration by remember {
-        mutableStateOf(0.minutes)
-    }
-    var longBreakDuration by remember {
-        mutableStateOf(0.minutes)
-    }
-    var cycles by remember {
-        mutableIntStateOf(0)
-    }
     AlertDialog(
         title = {
             Text(text = stringResource(R.string.new_focus_plan_title))
@@ -127,8 +128,8 @@ fun AddFocusPlanDialog(
                 ) {
                     Text(text = "Name:")
                     BetterTextField(
-                        value = focusPlaneName,
-                        onValueChange = { focusPlaneName = it },
+                        value = focusPlanDetails.name,
+                        onValueChange = { onInputValueChange(focusPlanDetails.copy(name = it)) },
                         modifier = Modifier.padding(end = 24.dp)
                     )
                 }
@@ -138,8 +139,8 @@ fun AddFocusPlanDialog(
                 ) {
                     Text(text = "Work:")
                     DurationMinutesTextField(
-                        duration = workDuration,
-                        onDurationChange = {workDuration = it},
+                        duration = focusPlanDetails.workDuration,
+                        onDurationChange = { onInputValueChange(focusPlanDetails.copy(workDuration = it)) },
                     )
                 }
                 Row(
@@ -148,8 +149,10 @@ fun AddFocusPlanDialog(
                 ) {
                     Text(text = "Break (short):")
                     DurationMinutesTextField(
-                        duration = shortBreakDuration,
-                        onDurationChange = {shortBreakDuration = it}
+                        duration = focusPlanDetails.shortBreakDuration,
+                        onDurationChange = {
+                            onInputValueChange(focusPlanDetails.copy(shortBreakDuration = it))
+                        }
                     )
                 }
                 Row(
@@ -158,8 +161,10 @@ fun AddFocusPlanDialog(
                 ) {
                     Text(text = "Break (long):")
                     DurationMinutesTextField(
-                        duration = longBreakDuration,
-                        onDurationChange = {longBreakDuration = it}
+                        duration = focusPlanDetails.longBreakDuration?: 0.minutes,
+                        onDurationChange = {
+                            onInputValueChange(focusPlanDetails.copy(longBreakDuration = it))
+                        }
                     )
                 }
                 Row(
@@ -168,8 +173,10 @@ fun AddFocusPlanDialog(
                 ) {
                     Text(text = "Cycles:")
                     BetterTextField(
-                        value = cycles.toString(),
-                        onValueChange = { cycles = it.toInt() },
+                        value = focusPlanDetails.cycles.toString(),
+                        onValueChange = {
+                            onInputValueChange(focusPlanDetails.copy(cycles = it.toInt()))
+                        },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.padding(end = 24.dp)
                     )
@@ -179,25 +186,15 @@ fun AddFocusPlanDialog(
         onDismissRequest = onDiscard,
         confirmButton = { 
             TextButton(
-                onClick = {
-                    val focusPlanDetails = FocusPlanDetails(
-                        name = focusPlaneName,
-                        workDuration = workDuration,
-                        shortBreakDuration = shortBreakDuration,
-                        longBreakDuration = longBreakDuration,
-                        cycles = cycles
-                    )
-                    if (isInputValid(focusPlanDetails)) {
-                        onAdd(focusPlanDetails)
-                    }
-                }
+                onClick = onSave,
+                enabled = isEntryValid
             ) {
-                Text(text = "Add Focus Plan")
+                Text(text = stringResource(R.string.new_focus_plan_add))
             } 
         },
         dismissButton = { 
             TextButton(onClick = onDiscard) {
-                Text(text = "Discard")
+                Text(text = stringResource(R.string.discard_plan_button))
             } 
         }
     )
@@ -233,10 +230,16 @@ fun FocusPlanItem(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceEvenly,
-            modifier = Modifier.fillMaxWidth()
+            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
         ) {
-            Text(text = focusPlanDetails.name, style = MaterialTheme.typography.labelLarge)
+            Text(
+                text = focusPlanDetails.name,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
             Row(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 modifier = Modifier.fillMaxWidth(),
@@ -259,19 +262,25 @@ fun FocusPlanItem(
 
     }
 }
-/*
-@Composable
-fun FocusPlanIllustration(focusPlanDetails: FocusPlanDetails, modifier: Modifier = Modifier) {
 
+@Preview(showBackground = true)
+@Composable
+fun FocusPlanItemPreview() {
+    ProductivityGameTheme {
+        FocusPlanItem(
+            focusPlanDetails = POMODORO,
+            onSelectFocusPlan = {}
+        )
+    }
 }
- */
 
 @Preview(showBackground = true)
 @Composable
 fun AddFocusPlanDialogPreview() {
     AddFocusPlanDialog(
-        onDiscard = { /*TODO*/ },
-        onAdd = { /*TODO*/ },
-        isInputValid = {false}
+        onDiscard = {  },
+        onInputValueChange = {  },
+        isEntryValid = false,
+        focusPlanDetails = FocusPlanDetails()
     )
 }
