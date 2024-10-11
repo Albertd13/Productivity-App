@@ -14,15 +14,14 @@ My first attempt at making an android app.
 
 ## Current Features:
 ### Adding recurring/repeating tasks
-![Add Recurring Task Screenshot](https://github.com/user-attachments/assets/8e2ed51d-0951-459f-b7a1-d95c399a7130)
+<img src="https://github.com/user-attachments/assets/8e2ed51d-0951-459f-b7a1-d95c399a7130" width="200"/>
 
 ### Setting deadlines
-![Setting Deadlines Screenshot](https://github.com/user-attachments/assets/89c3789b-2e1f-469f-890f-f916fbbfd07e)
+<img src="https://github.com/user-attachments/assets/89c3789b-2e1f-469f-890f-f916fbbfd07e" width="200"/>
 
-### Home Schedule Page
-![Viewing your Schedule](https://github.com/user-attachments/assets/68914889-98da-4029-9dd1-4aa636cbe690)
+### Home Schedule Page (after the above additions)
+<img src="https://github.com/user-attachments/assets/68914889-98da-4029-9dd1-4aa636cbe690" width="200"/>
 
 ### Starting timer with focus plan
-![Starting a new timer](https://github.com/user-attachments/assets/01102fef-4165-4c40-9362-e00fc43bf5fd)
-![Running a Timer](https://github.com/user-attachments/assets/bee3727c-c3ad-4f15-a994-650b484a997f)
-
+<img src="https://github.com/user-attachments/assets/01102fef-4165-4c40-9362-e00fc43bf5fd" width="200"/>
+<img src="https://github.com/user-attachments/assets/bee3727c-c3ad-4f15-a994-650b484a997f" width="200"/>
