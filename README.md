@@ -1,6 +1,6 @@
 # Productivity App
 
-My first attempt at making an android app.
+An Android application to improve productivity through scheduling and focused activity time, still a work in progress.
 
 ## Current features:
 1. Add or remove tasks, with different classifications (deadlines, recurring or scheduled tasks) and options for notifications
