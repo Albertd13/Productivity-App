@@ -52,6 +52,10 @@ fun TaskDetails.toTask(): Task = Task(
     isDeadline = isDeadline
 )
 
+fun LocalDate.toJavaLocalDate(): java.time.LocalDate {
+    return java.time.LocalDate.of(this.year, this.monthNumber, this.dayOfMonth)
+}
+
 fun TaskDetails.getRecurringCat(): RecurringCategory =
     RecurringCategory(
         id = recurringCatId,

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -181,7 +180,6 @@ fun SaveTaskForm(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .wrapContentHeight()
                 .padding(innerPadding),
             contentAlignment = Alignment.Center
         ) {
@@ -190,8 +188,9 @@ fun SaveTaskForm(
                 OutlinedTextField(
                     value = taskDetails.name,
                     onValueChange = { onValueChange(taskDetails.copy(name = it)) },
-                    label = { Text(text = stringResource(R.string.task_name)) },
+                    label = { Text(text = stringResource(R.string.task_name), style = MaterialTheme.typography.bodyMedium) },
                     modifier = Modifier.fillMaxWidth(),
+                    textStyle = MaterialTheme.typography.labelLarge
                 )
                 // Notes Field (optional)
                 OutlinedTextField(
@@ -203,7 +202,7 @@ fun SaveTaskForm(
                             fontWeight = FontWeight.Light
                         )
                     },
-                    label = { Text(text = stringResource(R.string.add_note_label)) },
+                    label = { Text(text = stringResource(R.string.add_note_label), style = MaterialTheme.typography.bodyMedium) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp),
@@ -273,7 +272,7 @@ fun SaveTaskForm(
                             }
                         },
                     ) {
-                        Text(text = stringResource(R.string.save_task))
+                        Text(text = stringResource(R.string.save_task), style = MaterialTheme.typography.labelMedium)
                     }
                     if (isInvalidInputPopupVisible) {
                         Text(text = "Invalid Input", color = Color.Red)
@@ -404,7 +403,7 @@ fun ToggleWithTextRow(
             .fillMaxWidth()
             .padding(dimensionResource(R.dimen.padding_medium))
     ) {
-        Text(text = text, style = MaterialTheme.typography.titleLarge, modifier = Modifier)
+        Text(text = text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier)
         Switch(
             checked = checked,
             onCheckedChange = { onCheckedChange(it) }
@@ -469,7 +468,7 @@ fun DateSelectorRow(
         Text(
             text = if (taskDetails.recurringType != null) stringResource(id = R.string.start_date_select)
             else stringResource(R.string.date_select),
-            style = MaterialTheme.typography.titleLarge
+            style = MaterialTheme.typography.bodyMedium
         )
         Row(
             verticalAlignment = Alignment.CenterVertically
@@ -477,7 +476,7 @@ fun DateSelectorRow(
             Text(
                 text = savedDate?.format(customDateFormat) ?:
                     getCurrentDate().format(customDateFormat),
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.bodyMedium
             )
             IconButton(
                 onClick = {
@@ -567,11 +566,11 @@ fun TimeSelector(
             .fillMaxWidth()
             .padding(dimensionResource(R.dimen.padding_medium))
     ) {
-        Text(text = stringResource(R.string.time_select), style = MaterialTheme.typography.titleLarge)
+        Text(text = stringResource(R.string.time_select), style = MaterialTheme.typography.bodyMedium)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = savedTime?.format(customTimeFormat) ?: "",
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.bodyMedium
             )
             IconButton(onClick = {
                 showTimePicker = true

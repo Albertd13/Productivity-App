@@ -16,7 +16,7 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.productivitygame.R
-import com.example.productivitygame.ui.screens.ScheduleDestination
+import com.example.productivitygame.ui.screens.ScheduleScreen.ScheduleDestination
 import com.example.productivitygame.ui.screens.TimerDestination
 
 sealed class Screen(val route: String, @StringRes val labelResId: Int, @DrawableRes val iconResId: Int) {

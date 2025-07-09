@@ -149,7 +149,7 @@ fun TimerSection(
     onClickResume: () -> Unit,
     onClickDelete: () -> Unit
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         TimerCircle(
             durationLeftInSegmentMillis = durationLeftInSegmentMillis,
             totalDurationLeftMillis = totalDurationLeftMillis,
@@ -194,7 +194,7 @@ fun TimerCircle(
             .padding(10.dp)
             .background(
                 shape = CircleShape,
-                color = Color.LightGray
+                color = MaterialTheme.colorScheme.primaryContainer
             ),
         contentAlignment = Alignment.Center
     ){

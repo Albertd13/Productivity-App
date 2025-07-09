@@ -15,9 +15,9 @@ import com.example.productivitygame.ui.screens.EditTaskScreen
 import com.example.productivitygame.ui.screens.FocusPlanDestination
 import com.example.productivitygame.ui.screens.FocusPlanSelectionScreen
 import com.example.productivitygame.ui.screens.FocusTimerScreen
-import com.example.productivitygame.ui.screens.ScheduleDestination
+import com.example.productivitygame.ui.screens.ScheduleScreen.ScheduleDestination
 import com.example.productivitygame.ui.screens.TimerDestination
-import com.example.productivitygame.ui.screens.ViewScheduleScreen
+import com.example.productivitygame.ui.screens.ScheduleScreen.ViewScheduleScreen
 import com.example.productivitygame.ui.utils.POMODORO
 import com.example.productivitygame.ui.utils.toEpochMillis
 import kotlinx.datetime.TimeZone

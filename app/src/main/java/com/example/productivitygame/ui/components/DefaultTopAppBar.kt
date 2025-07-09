@@ -26,7 +26,7 @@ fun DefaultTopAppBar(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             titleContentColor = MaterialTheme.colorScheme.primary,
         ),
-        title = { Text(text = titleText) },
+        title = { Text(text = titleText, style = MaterialTheme.typography.titleLarge) },
         navigationIcon = {
             if(canNavigateBack) {
                 IconButton(onClick = navigateBack) {
