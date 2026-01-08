@@ -1,6 +1,5 @@
 package com.example.productivitygame.ui.screens.ScheduleScreen
 
-import CustomDatePicker
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -117,7 +116,8 @@ fun ViewScheduleScreen(
                             scheduleUiState.copy(dateSelected = it)
                         )
                 },
-                selectedDate = scheduleUiState.dateSelected
+                selectedDate = scheduleUiState.dateSelected,
+                deadlineDates = deadlineDates
             )
         }
     ) { innerPadding ->
@@ -185,6 +185,7 @@ fun ViewScheduleTopAppBar(
     title: String,
     onSelectCalendarDate: (dateSelected: LocalDate?) -> Unit,
     selectedDate: LocalDate,
+    deadlineDates: Set<LocalDate> = setOf(),
     modifier: Modifier = Modifier
 ) {
     CenterAlignedTopAppBar(
@@ -194,6 +195,7 @@ fun ViewScheduleTopAppBar(
             SimpleDateSelector(
                 onConfirmDate = onSelectCalendarDate,
                 selectedDate = selectedDate,
+                deadlineDates = deadlineDates
             )
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -208,11 +210,12 @@ fun ViewScheduleTopAppBar(
 fun SimpleDateSelector(
     onConfirmDate: (LocalDate?) -> Unit,
     selectedDate: LocalDate,
+    deadlineDates: Set<LocalDate> = setOf()
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = selectedDate.toEpochMillis(TimeZone.UTC),
-        yearRange = 2024..2025,
+        yearRange = getCurrentDate().year - 10 .. getCurrentDate().year + 10,
     )
     LaunchedEffect(key1 = selectedDate) {
         datePickerState.selectedDateMillis = selectedDate.toEpochMillis(TimeZone.UTC)
@@ -229,10 +232,13 @@ fun SimpleDateSelector(
     }
     if (showDatePicker) {
         BasicAlertDialog(onDismissRequest = { showDatePicker = false }) {
-            CustomDatePicker(initialDate = selectedDate, onConfirmDate = { date ->
-                onConfirmDate(date)
-                showDatePicker = false
-            })
+            CustomDatePicker(initialDate = selectedDate,
+                deadlineDates = deadlineDates,
+                onConfirmDate = { date ->
+                    onConfirmDate(date)
+                    showDatePicker = false
+                }
+            )
 
         }
     }

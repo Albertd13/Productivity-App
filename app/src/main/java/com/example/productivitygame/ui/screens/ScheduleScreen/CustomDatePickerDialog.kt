@@ -1,3 +1,5 @@
+package com.example.productivitygame.ui.screens.ScheduleScreen
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -29,7 +31,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.productivitygame.R
-import com.example.productivitygame.ui.screens.ScheduleScreen.SimpleCalendarTitle
 import com.example.productivitygame.ui.utils.getCurrentDate
 import com.example.productivitygame.ui.utils.toJavaLocalDate
 import com.kizitonwose.calendar.compose.CalendarLayoutInfo
@@ -52,11 +53,11 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 // Adapted from sample app
-
 @Composable
 fun CustomDatePicker(
     adjacentMonths: Long = 500,
     initialDate: LocalDate = getCurrentDate(),
+    deadlineDates: Set<LocalDate> = setOf(),
     onConfirmDate: (dateSelected: LocalDate?) -> Unit
 ) {
     val currentMonth = remember { YearMonth.of(initialDate.year, initialDate.monthNumber) }
@@ -96,7 +97,7 @@ fun CustomDatePicker(
             modifier = Modifier.testTag("Calendar"),
             state = state,
             dayContent = { day ->
-                Day(day, isSelected = selectedDate == day) { clicked ->
+                Day(day, isDeadline = day.date.toKotlinLocalDate() in deadlineDates, isSelected = selectedDate == day) { clicked ->
                     selectedDate = clicked
                 }
             },
@@ -144,7 +145,7 @@ private fun MonthHeader(daysOfWeek: List<DayOfWeek>) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag("MonthHeader"),
+            .testTag("com.example.productivitygame.ui.screens.ScheduleScreen.MonthHeader"),
     ) {
         for (dayOfWeek in daysOfWeek) {
             Text(
@@ -159,7 +160,7 @@ private fun MonthHeader(daysOfWeek: List<DayOfWeek>) {
 }
 
 @Composable
-private fun Day(day: CalendarDay, isSelected: Boolean, onClick: (CalendarDay) -> Unit) {
+private fun Day(day: CalendarDay, isSelected: Boolean, isDeadline: Boolean = false, onClick: (CalendarDay) -> Unit) {
     Box(
         modifier = Modifier
             .aspectRatio(1f) // This is important for square-sizing!
@@ -174,11 +175,15 @@ private fun Day(day: CalendarDay, isSelected: Boolean, onClick: (CalendarDay) ->
             ),
         contentAlignment = Alignment.Center,
     ) {
+        // Color.Unspecified will use the default text color from the current theme
         val textColor = when (day.position) {
-            // Color.Unspecified will use the default text color from the current theme
-            DayPosition.MonthDate -> if (isSelected) Color.White else Color.Unspecified
-            DayPosition.InDate, DayPosition.OutDate -> Color.LightGray
+            DayPosition.MonthDate -> if (isDeadline) Color.Red else if (isSelected) Color.White else Color.Unspecified
+            DayPosition.InDate -> Color.LightGray
+            DayPosition.OutDate -> if (isDeadline) Color(0xFFDD0000) else Color.LightGray
+            else -> throw NotImplementedError("Not implemented colour")
         }
+
+
         Text(
             text = day.date.dayOfMonth.toString(),
             color = textColor,
