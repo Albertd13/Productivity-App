@@ -12,6 +12,7 @@ import com.example.productivitygame.notifications.NotificationExactScheduler
 import com.example.productivitygame.ui.screens.AddTaskDestination
 import com.example.productivitygame.ui.utils.Result
 import com.example.productivitygame.ui.utils.getAlarmItem
+import com.example.productivitygame.ui.utils.getCurrentDate
 import com.example.productivitygame.ui.utils.getRecurringCat
 import com.example.productivitygame.ui.utils.toTask
 import com.example.productivitygame.ui.utils.toUtcDate
@@ -36,7 +37,8 @@ class AddTaskViewModel(
 
     @OptIn(ExperimentalMaterial3Api::class)
     override var datePickerState by mutableStateOf(DatePickerState(
-        yearRange = 2024..2025,
+        yearRange = getCurrentDate().year - 10 ..
+                getCurrentDate().year + 10,
         locale = Locale.getDefault(),
         initialSelectedDateMillis = preselectedDateInMillis,
         selectableDates = getCurrentSelectableDates()

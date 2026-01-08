@@ -8,8 +8,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.example.productivitygame.data.dao.RecurringCatAndTaskDao
 import com.example.productivitygame.data.RecurringType
+import com.example.productivitygame.data.dao.RecurringCatAndTaskDao
 import com.example.productivitygame.notifications.NotificationExactScheduler
 import com.example.productivitygame.ui.screens.EditTaskDestination
 import com.example.productivitygame.ui.utils.Result
@@ -40,8 +40,10 @@ class EditTaskViewModel(
         originalTaskDetails = taskUiState.taskDetails.copy()
     }
     @OptIn(ExperimentalMaterial3Api::class)
+
     override var datePickerState by mutableStateOf(DatePickerState(
-        yearRange = 2024..2025,
+        yearRange = getCurrentDate().year - 10 ..
+                getCurrentDate().year + 10,
         locale = Locale.getDefault(),
         initialSelectedDateMillis = getCurrentDate().toEpochMillis(TimeZone.UTC),
         selectableDates = getCurrentSelectableDates()

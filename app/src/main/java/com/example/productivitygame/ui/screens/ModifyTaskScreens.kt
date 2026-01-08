@@ -634,7 +634,8 @@ fun SaveTaskFormPreview() {
         topAppBarTitle = "Test Form",
         taskDetails = TaskDetails(),
         datePickerState = DatePickerState(
-            yearRange = 2024..2025,
+            yearRange = getCurrentDate().year - 10 ..
+                getCurrentDate().year + 10,
             locale = Locale.getDefault(),
             initialSelectedDateMillis = getCurrentDate().toEpochMillis(TimeZone.UTC),
         ),
