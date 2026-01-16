@@ -1,8 +1,5 @@
 package com.example.productivitygame.ui.viewmodels
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.productivitygame.data.dao.RecurringCatAndTaskDao
@@ -12,10 +9,16 @@ import com.example.productivitygame.ui.utils.getCurrentDate
 import com.example.productivitygame.ui.utils.toTask
 import com.example.productivitygame.ui.utils.toTaskDetails
 import com.example.productivitygame.ui.viewmodels.modify_task_models.TaskDetails
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -26,12 +29,24 @@ class ScheduleViewModel(
     private val recurringCatAndTaskDao: RecurringCatAndTaskDao,
     private val notificationExactScheduler: NotificationExactScheduler
 ): ViewModel() {
-    var scheduleUiState by mutableStateOf(ScheduleUiState())
+    var scheduleUiState = MutableStateFlow(ScheduleUiState())
         private set
+    private val selectedDateFlow = scheduleUiState.map { it.dateSelected }.distinctUntilChanged()
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val timedTaskState: StateFlow<ScheduleTaskState> = selectedDateFlow.flatMapLatest {
+        getTasksOnDate(it, it.plus(1, DateTimeUnit.DAY), hasTime = true)
+    }.distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(TIMEOUT_MILLIS), ScheduleTaskState())
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val todoTaskState: StateFlow<ScheduleTaskState> = selectedDateFlow.flatMapLatest {
+        getTasksOnDate(it, it.plus(1, DateTimeUnit.DAY), hasTime = false)
+    }.distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(TIMEOUT_MILLIS), ScheduleTaskState())
 
-    fun updateScheduleUiState(newScheduleUiState: ScheduleUiState) {
-        scheduleUiState = newScheduleUiState
+    fun updateScheduleUiState(scheduleUiState: ScheduleUiState) {
+        this.scheduleUiState.update { scheduleUiState }
     }
+
     fun getAllDatesWithDeadlines(): StateFlow<Set<LocalDate>> =
         recurringCatAndTaskDao
             .getAllDatesWIthDeadlines()
@@ -43,7 +58,7 @@ class ScheduleViewModel(
                 started = SharingStarted.WhileSubscribed(TIMEOUT_MILLIS),
                 initialValue = setOf()
             )
-    fun getTasksOnDate(
+    private fun getTasksOnDate(
         startDate: LocalDate,
         endDate: LocalDate,
         hasTime: Boolean
@@ -63,13 +78,14 @@ class ScheduleViewModel(
                 initialValue = ScheduleTaskState()
             )
 
-    //Note: this will not delete the RecurringCat
+    // Note: this will not delete the RecurringCat
     suspend fun deleteTask(taskDetails: TaskDetails) {
         val task = taskDetails.toTask()
         recurringCatAndTaskDao.delete(task)
         if (task.notificationsEnabled)
             notificationExactScheduler.cancelNotifications(listOf(task.id))
     }
+
     suspend fun completeTask(taskDetails: TaskDetails) {
         val task = taskDetails.toTask()
         if (taskDetails.recurringType != null) {
@@ -102,7 +118,7 @@ class ScheduleViewModel(
 
 data class ScheduleUiState(
     val dateSelected: LocalDate = getCurrentDate(),
-    val selectedTaskToDelete: TaskDetails = TaskDetails()
+    val pendingDeleteTask: TaskDetails? = null
 )
 
 data class ScheduleTaskState(

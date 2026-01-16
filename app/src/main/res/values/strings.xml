@@ -34,4 +34,5 @@
     <string name="new_focus_plan_title">Create A New Plan!</string>
     <string name="new_focus_plan_add">Add Focus Plan</string>
     <string name="discard_plan_button">Discard</string>
+    <string name="delete_task_confirmation">Are you sure you want to delete the task?</string>
 </resources>

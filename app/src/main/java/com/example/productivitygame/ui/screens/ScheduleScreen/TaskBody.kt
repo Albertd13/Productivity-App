@@ -4,17 +4,17 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,13 +35,13 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.productivitygame.R
 import com.example.productivitygame.ui.viewmodels.ScheduleTaskState
 import com.example.productivitygame.ui.viewmodels.modify_task_models.TaskDetails
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskBody(
     onClearTaskSwipe: (SwipeToDismissBoxValue, TaskDetails) -> Boolean,
@@ -51,57 +51,54 @@ fun TaskBody(
     todoTaskState: ScheduleTaskState,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier) {
-        TaskList(
-            label = "Scheduled Tasks",
-            taskList = timedTaskState.taskList,
-            onClearTaskSwipe = onClearTaskSwipe,
-            onToggleNotif = onToggleNotif,
-            onClickTask = onClickTask,
-        )
-        TaskList(
-            label = "To-Do Tasks",
-            taskList = todoTaskState.taskList,
-            onClearTaskSwipe = onClearTaskSwipe,
-            onToggleNotif = onToggleNotif,
-            onClickTask = onClickTask,
-        )
+    val listState = rememberLazyListState()
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        state = listState
+    ) {
+        if (timedTaskState.taskList.isNotEmpty()) {
+           item(key = "header_scheduled") {
+               Text(
+                   text = "Scheduled Tasks",
+                   modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                   textAlign = TextAlign.Center
+               )
+           }
+           items(
+               items = timedTaskState.taskList,
+               key = { task -> task.taskId }
+           ) {
+               TaskCard(
+                   taskDetails = it,
+                   onToggleNotif = onToggleNotif,
+                   onClickTask = onClickTask,
+                   onClearTaskSwipe = onClearTaskSwipe
+               )
+           }
+       }
+        if (todoTaskState.taskList.isNotEmpty()) {
+            item(key = "header_todo") {
+               Text(
+                   text = "To-Do Tasks",
+                   modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                   textAlign = TextAlign.Center
+               )
+           }
+           items(
+               items = todoTaskState.taskList,
+               key = { task -> task.taskId }
+           ) {
+               TaskCard(
+                   taskDetails = it,
+                   onToggleNotif = onToggleNotif,
+                   onClickTask = onClickTask,
+                   onClearTaskSwipe = onClearTaskSwipe
+               )
+           }
+       }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TaskList(
-    modifier: Modifier = Modifier,
-    label: String = "",
-    onToggleNotif: (TaskDetails) -> Unit = {},
-    onClearTaskSwipe: (SwipeToDismissBoxValue, TaskDetails) -> Boolean,
-    onClickTask: (Int) -> Unit,
-    taskList: List<TaskDetails> = listOf(),
-) {
-    if (taskList.isNotEmpty()) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = label)
-            LazyColumn(
-                modifier = modifier,
-            ) {
-                items(taskList) {
-                    TaskCard(
-                        onClearTaskSwipe = onClearTaskSwipe,
-                        taskDetails = it,
-                        onToggleNotif = onToggleNotif,
-                        onClickTask = onClickTask
-                    )
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskCard(
     taskDetails: TaskDetails,
@@ -204,7 +201,6 @@ fun TaskCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SwipeBackground(
     dismissDirection: SwipeToDismissBoxValue,

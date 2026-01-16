@@ -22,7 +22,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +34,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.productivitygame.R
 import com.example.productivitygame.data.RecurringType
@@ -46,13 +46,11 @@ import com.example.productivitygame.ui.utils.toEpochMillis
 import com.example.productivitygame.ui.viewmodels.ScheduleViewModel
 import com.example.productivitygame.ui.viewmodels.modify_task_models.TaskDetails
 import kotlinx.coroutines.launch
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
 import kotlinx.datetime.format.MonthNames
 import kotlinx.datetime.format.char
-import kotlinx.datetime.plus
 
 object ScheduleDestination : NavigationDestination {
     override val route = "home"
@@ -66,7 +64,6 @@ val customDateFormat = LocalDate.Format {
 const val MONTHS_BEFORE_CURRENT: Long = 6
 const val MONTHS_AFTER_CURRENT: Long = 48
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ViewScheduleScreen(
     // new Task has initial selected date set to the currently selected date
@@ -74,22 +71,13 @@ fun ViewScheduleScreen(
     navigateToEditTask: (taskId: Int) -> Unit,
     viewModel: ScheduleViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
-    val scheduleUiState = viewModel.scheduleUiState
+    val scheduleUiState by viewModel.scheduleUiState.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     var deleteConfirmation by rememberSaveable {  mutableStateOf(false) }
-    val timedTaskState by viewModel.getTasksOnDate(
-        scheduleUiState.dateSelected,
-        scheduleUiState.dateSelected.plus(1, DateTimeUnit.DAY),
-        hasTime = true
-    ).collectAsState()
 
-    val todoTaskState by viewModel.getTasksOnDate(
-        scheduleUiState.dateSelected,
-        scheduleUiState.dateSelected.plus(1, DateTimeUnit.DAY),
-        hasTime = false
-    ).collectAsState()
-
-    val deadlineDates by viewModel.getAllDatesWithDeadlines().collectAsState()
+    val timedTaskState by viewModel.timedTaskState.collectAsStateWithLifecycle()
+    val todoTaskState by viewModel.todoTaskState.collectAsStateWithLifecycle()
+    val deadlineDates by viewModel.getAllDatesWithDeadlines().collectAsStateWithLifecycle()
 
     Scaffold(
         floatingActionButton = {
@@ -132,44 +120,46 @@ fun ViewScheduleScreen(
                     },
                     deadlineDates = deadlineDates
                 )
-                TaskBody(
-                    onClearTaskSwipe = { swipeToDismissBoxValue, taskDetails ->
-                        when (swipeToDismissBoxValue) {
-                            SwipeToDismissBoxValue.EndToStart -> {
-                                viewModel.updateScheduleUiState(
-                                    scheduleUiState.copy(selectedTaskToDelete = taskDetails)
-                                )
-                                deleteConfirmation = true
-                                false
+                    TaskBody(
+                        onClearTaskSwipe = { swipeToDismissBoxValue, taskDetails ->
+                            when (swipeToDismissBoxValue) {
+                                SwipeToDismissBoxValue.EndToStart -> {
+                                    viewModel.updateScheduleUiState(
+                                        scheduleUiState.copy(pendingDeleteTask = taskDetails)
+                                    )
+                                    deleteConfirmation = true
+                                    false
+                                }
+                                SwipeToDismissBoxValue.StartToEnd -> {
+                                    coroutineScope.launch { viewModel.completeTask(taskDetails) }
+                                    true
+                                }
+                                else -> true
                             }
-                            SwipeToDismissBoxValue.StartToEnd -> {
-                                coroutineScope.launch { viewModel.completeTask(taskDetails) }
-                                true
-                            }
-                            else -> true
-                        }
-                    },
-                    onToggleNotif = {
-                        coroutineScope.launch { viewModel.toggleTaskNotification(it) }
-                    },
-                    onClickTask = {
-                        //TODO: provide a View TaskDetails screen with an OPTION to edit instead of directly edit
-                        navigateToEditTask(it)
-                    },
-                    timedTaskState = timedTaskState,
-                    todoTaskState = todoTaskState,
-                )
+                        },
+                        onToggleNotif = {
+                            coroutineScope.launch { viewModel.toggleTaskNotification(it) }
+                        },
+                        onClickTask = {
+                            //TODO: provide a View TaskDetails screen with an OPTION to edit instead of directly edit
+                            navigateToEditTask(it)
+                        },
+                        timedTaskState = timedTaskState,
+                        todoTaskState = todoTaskState,
+                    )
+
             }
             if (deleteConfirmation) {
                 ConfirmationAlert(
                     title = stringResource(R.string.delete_task_title),
-                    description = "Are you sure you want to delete the task?",
+                    description = stringResource(R.string.delete_task_confirmation),
                     onDismissRequest = {
-                        deleteConfirmation = false
                     },
                     onConfirmRequest = {
                         coroutineScope.launch {
-                            viewModel.deleteTask(scheduleUiState.selectedTaskToDelete)
+                            if (scheduleUiState.pendingDeleteTask != null) {
+                                viewModel.deleteTask(scheduleUiState.pendingDeleteTask!!)
+                            }
                             deleteConfirmation = false
                         }
                     }
@@ -185,8 +175,8 @@ fun ViewScheduleTopAppBar(
     title: String,
     onSelectCalendarDate: (dateSelected: LocalDate?) -> Unit,
     selectedDate: LocalDate,
-    deadlineDates: Set<LocalDate> = setOf(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    deadlineDates: Set<LocalDate> = setOf()
 ) {
     CenterAlignedTopAppBar(
         title = { Text(text = title) },
@@ -244,7 +234,6 @@ fun SimpleDateSelector(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Preview
 @Composable
 fun TaskCardPreview() {
@@ -259,28 +248,6 @@ fun TaskCardPreview() {
             onClickTask = {}
         )
 
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview
-@Composable
-fun TaskListPreview() {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        TaskList(
-            taskList = listOf(
-                TaskDetails(name = "Weekly Recurring", recurringType = RecurringType.Weekly()),
-                TaskDetails(name = "Weekly Recurring", recurringType = RecurringType.Weekly()),
-                TaskDetails(name = "Monthly Recurring", recurringType = RecurringType.Monthly()),
-                TaskDetails(name = "Daily Recurring", recurringType = RecurringType.Daily()),
-                TaskDetails(name = "Not Recurring")
-            ),
-            onClearTaskSwipe = {_,_ -> true},
-            onClickTask = {}
-        )
     }
 }
 
