@@ -1,12 +1,13 @@
 plugins {
     alias(libs.plugins.androidApplication)
-    id("com.google.devtools.ksp") version "1.9.0-1.0.13"
+    id("com.google.devtools.ksp") version "2.1.10-1.0.30"
     alias(libs.plugins.jetbrainsKotlinAndroid)
+    alias(libs.plugins.compose.compiler)
 }
 
 android {
     namespace = "com.example.productivitygame"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.productivitygame"
@@ -51,6 +52,11 @@ android {
     }
 }
 dependencies {
+    val composeBom = platform(libs.androidx.compose.bom)
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
+
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.media)
     implementation(kotlin("reflect"))
     implementation(libs.androidx.fragment.ktx)
